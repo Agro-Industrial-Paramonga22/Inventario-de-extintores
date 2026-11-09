@@ -85,8 +85,6 @@ let movimientosPrestamoActivos = {};
 let movimientosGarantiaActivos = {};
 let bajaArchivo = null;
 let nuevoReemplazoData = {};
-let modoGarantiaForzado = false;
-
 let editorModoCreacion = false;
 
 function actualizarVisibilidadFiltros() {
@@ -650,60 +648,72 @@ const calApplyBtn = document.getElementById('cal-apply');
 const monthFormatter = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' });
 const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function sameDay(a,b) { return a && b && dateKey(a) === dateKey(b); }
 function toIsoMonth(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 
+// Reemplaza la función renderCalendar() existente por esta:
+const MESES_NOMBRES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
 function renderCalendar() {
-    calMonthLabel.textContent = monthFormatter.format(calVisibleMonth);
+    // Ahora solo mostramos el AÑO en el encabezado, no el mes
+    calMonthLabel.textContent = calVisibleMonth.getFullYear(); 
     calDaysContainer.innerHTML = '';
-    const year = calVisibleMonth.getFullYear(), month = calVisibleMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const offset = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (let i = 0; i < offset; i++) {
-        const sp = document.createElement('span');
-        sp.textContent = new Date(year, month, -offset + i + 1).getDate();
-        sp.style.textAlign = 'center';
-        sp.style.color = '#cbd5e1';
-        sp.style.fontSize = '13px';
-        calDaysContainer.appendChild(sp);
-    }
-    const today = new Date();
-    for (let day = 1; day <= daysInMonth; day++) {
-        const current = new Date(year, month, day);
+    const year = calVisibleMonth.getFullYear();
+
+    // Generamos los 12 meses
+    for (let month = 0; month < 12; month++) {
+        const current = new Date(year, month, 1);
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = day;
-        if (sameDay(current, today)) btn.classList.add('today');
-        if (sameDay(current, calRangeStart) || sameDay(current, calRangeEnd)) btn.classList.add('selected');
-        if (calRangeStart && calRangeEnd && current > calRangeStart && current < calRangeEnd) btn.classList.add('in-range');
-        if (sameDay(current, calRangeStart)) btn.classList.add('range-start');
-        if (sameDay(current, calRangeEnd)) btn.classList.add('range-end');
+        btn.textContent = MESES_NOMBRES[month];
+
+        // Lógica para pintar el rango seleccionado
+        if (calRangeStart && calRangeEnd) {
+            const currentIdx = year * 12 + month;
+            const startIdx = calRangeStart.getFullYear() * 12 + calRangeStart.getMonth();
+            const endIdx = calRangeEnd.getFullYear() * 12 + calRangeEnd.getMonth();
+
+            if (currentIdx === startIdx) btn.classList.add('selected', 'range-start');
+            if (currentIdx === endIdx) btn.classList.add('selected', 'range-end');
+            if (currentIdx > startIdx && currentIdx < endIdx) btn.classList.add('in-range');
+        } else if (calRangeStart) {
+            // Si solo hay inicio seleccionado
+            if (year === calRangeStart.getFullYear() && month === calRangeStart.getMonth()) {
+                btn.classList.add('selected', 'range-start', 'range-end');
+            }
+        }
+
         btn.addEventListener('click', (e) => { e.stopPropagation(); selectCalendarDate(current); });
         calDaysContainer.appendChild(btn);
     }
 }
 
+// Reemplaza la función selectCalendarDate() por esta:
 function selectCalendarDate(date) {
     if (!calRangeStart || (calRangeStart && calRangeEnd)) {
         calRangeStart = date;
         calRangeEnd = null;
-        calStatus.textContent = 'Ahora selecciona la fecha final';
+        calStatus.textContent = 'Ahora selecciona el mes final';
         calApplyBtn.disabled = true;
     } else {
-        if (date < calRangeStart) { calRangeEnd = calRangeStart; calRangeStart = date; }
-        else if (sameDay(date, calRangeStart)) { calRangeEnd = date; }
-        else { calRangeEnd = date; }
-        calStatus.textContent = `Rango: ${dateFormatter.format(calRangeStart)} - ${dateFormatter.format(calRangeEnd)}`;
+        if (date < calRangeStart) { 
+            calRangeEnd = calRangeStart; 
+            calRangeStart = date; 
+        } else { 
+            calRangeEnd = date; 
+        }
+        const formatM = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        calStatus.textContent = `Rango: ${formatM(calRangeStart)} - ${formatM(calRangeEnd)}`;
         calApplyBtn.disabled = false;
     }
     updateDateLabel();
     renderCalendar();
 }
+
+// Reemplaza la función updateDateLabel() por esta:
 function updateDateLabel() {
-    if (calRangeStart && calRangeEnd) dateLabel.textContent = `${dateFormatter.format(calRangeStart)} - ${dateFormatter.format(calRangeEnd)}`;
-    else if (calRangeStart && !calRangeEnd) dateLabel.textContent = `${dateFormatter.format(calRangeStart)} - ...`;
+    const formatM = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    if (calRangeStart && calRangeEnd) dateLabel.textContent = `${formatM(calRangeStart)} - ${formatM(calRangeEnd)}`;
+    else if (calRangeStart && !calRangeEnd) dateLabel.textContent = `${formatM(calRangeStart)} - ...`;
     else dateLabel.textContent = 'Rango de vencimiento';
 }
 function openCalendar() { calendarPopup.classList.add('open'); dateTrigger.classList.add('open'); dateTrigger.setAttribute('aria-expanded','true'); }
@@ -711,8 +721,16 @@ function closeCalendar() { calendarPopup.classList.remove('open'); dateTrigger.c
 function clearCalendarRange() { calRangeStart = null; calRangeEnd = null; calPendingDesde = ""; calPendingHasta = ""; calStatus.textContent = 'Selecciona la fecha de inicio'; calApplyBtn.disabled = true; updateDateLabel(); renderCalendar(); applyFilters(); }
 
 dateTrigger.addEventListener('click', (e) => { e.stopPropagation(); if (calendarPopup.classList.contains('open')) closeCalendar(); else openCalendar(); });
-document.getElementById('cal-prev').addEventListener('click', (e) => { e.stopPropagation(); calVisibleMonth.setMonth(calVisibleMonth.getMonth() - 1); renderCalendar(); });
-document.getElementById('cal-next').addEventListener('click', (e) => { e.stopPropagation(); calVisibleMonth.setMonth(calVisibleMonth.getMonth() + 1); renderCalendar(); });
+document.getElementById('cal-prev').addEventListener('click', (e) => { 
+    e.stopPropagation(); 
+    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() - 1); 
+    renderCalendar(); 
+});
+document.getElementById('cal-next').addEventListener('click', (e) => { 
+    e.stopPropagation(); 
+    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() + 1); 
+    renderCalendar(); 
+});
 calClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearCalendarRange(); });
 calApplyBtn.addEventListener('click', (e) => { e.stopPropagation(); if (calRangeStart && calRangeEnd) { calPendingDesde = toIsoMonth(calRangeStart); calPendingHasta = toIsoMonth(calRangeEnd); closeCalendar(); applyFilters(); } });
 document.addEventListener('click', (e) => { if (!e.target.closest('.date-filter-wrap')) closeCalendar(); });
@@ -1177,11 +1195,8 @@ ${item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "" ? `<d
             botonesAccion += `<button class="btn btn-success" onclick="abrirNuevoExtintor()"><i class="fas fa-plus"></i> Registrar nuevo extintor</button>`;
         } else {
             if (!prestamoActivo) {
-                botonesAccion += `<button class="btn" style="background:#dc2626;color:white;" onclick="openLoanForm(${currentItemIndex})"><i class="fas fa-handshake"></i> Préstamo</button>`;
-            }
-            if (!garantiaActiva) {
-                botonesAccion += `<button class="btn btn-garantia" onclick="openLoanFormGarantia(${currentItemIndex})"><i class="fas fa-tools"></i> Extintor de garantía</button>`;
-            }
+    botonesAccion += `<button class="btn btn-primary" onclick="openLoanForm(${currentItemIndex})"><i class="fas fa-exchange-alt"></i> Registrar movimiento</button>`;
+}
             if (prestamoActivo) {
                 botonesAccion += `<button class="btn btn-primary" onclick="finalizarPrestamo(${currentItemIndex})"><i class="fas fa-check-circle"></i> Finalizar Préstamo</button>`;
             }
@@ -1216,46 +1231,16 @@ function openLoanForm(itemIndex) {
     document.getElementById('unidad-responsable').value = '';
     document.getElementById('unidad-asignada').value = '';
     if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
-    modoGarantiaForzado = false;
-    document.getElementById('tipo-prestamo-wrapper').style.display = 'block';
-    document.getElementById('tipo-prestamo-fijo').style.display = 'none';
+    
     document.getElementById('tipo-prestamo').value = 'interno';
     toggleCamposPrestamo();
     loanModal.classList.add('active');
 }
-function openLoanFormGarantia(itemIndex) {
-    currentItemIndex = itemIndex;
-    closeModal();
-    document.getElementById('personal-cambio').value = '';
-    document.getElementById('extintor-reemplazo').value = '';
-    document.getElementById('motivo-select').value = 'Usado';
-    document.getElementById('garantia-personal').value = '';
-    document.getElementById('garantia-reemplazo').value = '';
-    document.getElementById('unidad-area').value = '';
-    document.getElementById('unidad-responsable').value = '';
-    document.getElementById('unidad-asignada').value = '';
-    if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
-    modoGarantiaForzado = true;
-    document.getElementById('tipo-prestamo-wrapper').style.display = 'none';
-    document.getElementById('tipo-prestamo-fijo').style.display = 'block';
-    document.getElementById('tipo-prestamo').value = 'garantia';
-    toggleCamposPrestamo();
-    loanModal.classList.add('active');
-}
 function closeLoanModal() {
-    modoGarantiaForzado = false;
-    document.getElementById('tipo-prestamo-wrapper').style.display = 'block';
-    document.getElementById('tipo-prestamo-fijo').style.display = 'none';
     loanModal.classList.remove('active');
 }
 function toggleCamposPrestamo() {
     const tipo = document.getElementById('tipo-prestamo').value;
-    if (modoGarantiaForzado) {
-        document.getElementById('campos-interno').style.display = 'none';
-        document.getElementById('campos-garantia').style.display = 'block';
-        document.getElementById('campos-unidad').style.display = 'none';
-        return;
-    }
     document.getElementById('campos-interno').style.display = tipo === 'interno' ? 'block' : 'none';
     document.getElementById('campos-garantia').style.display = tipo === 'garantia' ? 'block' : 'none';
     document.getElementById('campos-unidad').style.display = tipo === 'unidad' ? 'block' : 'none';

@@ -335,55 +335,6 @@ body {
 .calendar-nav:hover {
     background: #e2e8f0;
 }
-.calendar-weekdays,
-.calendar-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-}
-.calendar-weekdays span {
-    text-align: center;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-.calendar-days button {
-    height: 34px;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    color: #1e293b;
-    transition: background 0.15s, color 0.15s;
-}
-.calendar-days button:hover {
-    background: #e2e8f0;
-}
-.calendar-days button.today {
-    font-weight: 700;
-    box-shadow: inset 0 0 0 1px #94a3b8;
-}
-.calendar-days button.selected {
-    background: #4caf50;
-    color: #fff;
-    font-weight: 600;
-}
-.calendar-days button.in-range {
-    background: #e8f5e9;
-    color: #1e5a2e;
-}
-.calendar-days button.range-start {
-    border-radius: 8px 0 0 8px;
-}
-.calendar-days button.range-end {
-    border-radius: 0 8px 8px 0;
-}
-.calendar-days button.selected.range-start.range-end {
-    border-radius: 8px;
-}
 .calendar-status {
     min-height: 24px;
     margin: 10px 0 8px;
@@ -1803,4 +1754,59 @@ tbody td:first-child strong {
         top: calc(100% + 6px);
     }
     .menu-dropdown .menu-item { padding: 12px 14px; font-size: .95rem; min-height: 44px; }
+}
+/* ===== CALENDARIO EN FORMATO DE MESES (MODERNO) ===== */
+.calendar-popup {
+    width: 320px !important; 
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    padding: 12px 0 !important;
+}
+
+/* Estilo base del botón (elimina el estilo Windows XP) */
+.calendar-days button {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #ffffff;
+    border: 1px solid #e2e8f0; /* Borde sutil */
+    border-radius: 10px !important;
+    color: #1e293b;
+    font-family: inherit;
+    font-size: 0.9rem !important;
+    font-weight: 600;
+    height: 44px !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+/* Efecto al pasar el mouse */
+.calendar-days button:hover {
+    background: #f0fdf4; /* Verde muy suave */
+    border-color: #bbf7d0;
+    color: #166534;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Botón seleccionado (Verde principal) */
+.calendar-days button.selected {
+    background: #16a34a;
+    color: #ffffff;
+    border-color: #16a34a;
+    box-shadow: 0 4px 10px -2px rgba(22, 163, 74, 0.4);
+}
+
+/* Rango intermedio (Cuando seleccionas de Ene a May, los de en medio) */
+.calendar-days button.in-range {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: transparent;
 }
