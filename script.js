@@ -611,28 +611,11 @@ function isItemExpired(item) {
 //  CONDICIÓN, ESTADO, UBICACIÓN
 // ============================================================
 function getCondicionItem(item) {
-    const estado = item["ESTADO"] || "";
-    const condicion = String(item["CONDICION"] || "").trim();
-    
-    // Si está dado de baja, se queda como Baja
-    if (condicion === "Baja") return "Baja";
-
-    // Evaluamos si está vencido por fecha o si su condición es "mala"
-    const esVencidoFecha = isItemExpired(item);
-    const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(condicion);
-
-    // Si es vencido o tiene condición mala, siempre se mostrará como Vencido
-    if (esVencidoFecha || esCondicionMala) {
-        return "Vencido";
-    }
-
-    // Lógica para el Almacén
-    if (estado === "Almacén SST") {
-        return isAdmin ? (condicion || "En Almacén") : "Mantenimiento";
-    }
-
-    // Si no está vencido ni es condición mala, es Vigente
-    return "Vigente";
+    const condicion = String(item["CONDICION"] ?? "").trim();
+    return condicion || (isItemExpired(item) ? "Vencido" : "Vigente");
+}
+function escapeCondicion(valor) {
+    return String(valor).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function getEstadoItem(item) {
     if (!isAdmin) return "-";
@@ -781,6 +764,14 @@ function getMonthIndex(dateStr) {
     if (isoMonth) { const month = Number(isoMonth[2]); if (month >= 1 && month <= 12) return Number(isoMonth[1]) * 12 + month; }
     const parsed = getMonthYear(dateStr);
     return parsed ? parsed.year * 12 + parsed.month : null;
+}
+function getEstadoVencimiento(item) {
+    if (isItemExpired(item)) return 'Vencido';
+    const fecha = (item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "")
+        ? item["proxima_recarga"] : item["F. VENC."];
+    const hoy = new Date();
+    return getMonthIndex(fecha) === hoy.getFullYear() * 12 + hoy.getMonth() + 1
+        ? 'PorVencer' : 'Vigente';
 }
 function itemMatchesDateRange(item, desde, hasta) {
     if (!desde && !hasta) return true;
@@ -969,22 +960,11 @@ function actualizarTarjetasResumen() {
     let vencidos = 0;
     let porVencer = 0;
 
-    const hoy = new Date();
-    const mesActual = hoy.getFullYear() * 12 + hoy.getMonth();
-
     activos.forEach(item => {
-        const fechaEfectiva = (item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "")
-            ? item["proxima_recarga"]
-            : item["F. VENC."];
-        const mesVencimiento = getMonthIndex(fechaEfectiva);
-        const cond = String(item["CONDICION"] || '').trim();
-        
-        const esVencidoFecha = isItemExpired(item);
-        const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(cond);
-
-        if (esVencidoFecha || esCondicionMala) {
+        const estadoVencimiento = getEstadoVencimiento(item);
+        if (estadoVencimiento === 'Vencido') {
             vencidos++;
-        } else if (mesVencimiento !== null && mesVencimiento === mesActual) {
+        } else if (estadoVencimiento === 'PorVencer') {
             porVencer++;
         } else {
             vigentes++;
@@ -1059,30 +1039,12 @@ function applyFilters() {
         if (tipoVal && (item["TIPO"] || "").toUpperCase().trim() !== tipoVal) return false;
         if (capVal && (item["CAP."] || "").toLowerCase().trim() !== capVal) return false;
 
-        // --- FILTRO DE CONDICIÓN (KPI O SELECT) ---
-        const condActual = getCondicionItem(item);
-        
-        // Si se hizo clic en un KPI (Vigente, Vencido, Por Vencer)
-        if (globalCondicionFilter) {
-            if (globalCondicionFilter === 'PorVencer') {
-                const fechaEfectiva = (item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "") 
-                    ? item["proxima_recarga"] : item["F. VENC."];
-                const mesVencimiento = getMonthIndex(fechaEfectiva);
-                const hoy = new Date();
-                const mesActual = hoy.getFullYear() * 12 + hoy.getMonth();
-                const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(String(item["CONDICION"] || '').trim());
-                const esVencido = isItemExpired(item);
-                
-                // Si no es vencido, ni condición mala, y su mes es el actual -> Es por vencer
-                if (esVencido || esCondicionMala || mesVencimiento !== mesActual) return false;
-            } else {
-                // Vigente o Vencido directo
-                if (condActual !== globalCondicionFilter) return false;
-            }
+        // Los KPI y las opciones públicas Vigente/Vencido dependen de la fecha.
+        if (globalCondicionFilter && getEstadoVencimiento(item) !== globalCondicionFilter) return false;
+        if (!globalCondicionFilter && condVal) {
+            if (condVal === 'Vencido' && !isItemExpired(item)) return false;
+            if (condVal === 'Vigente' && isItemExpired(item)) return false;
         }
-        
-        // Si se usó el select de condición (solo visible para público)
-        if (!globalCondicionFilter && condVal && condActual !== condVal) return false;
 
         // --- FILTRO DE RANGO DE FECHAS (CALENDARIO) ---
         if ((calPendingDesde || calPendingHasta) && !itemMatchesDateRange(item, calPendingDesde, calPendingHasta)) {
@@ -1137,7 +1099,7 @@ function renderTable(data) {
         html += `<td>${item["AREA RESPONSABLE"] || "-"}</td>`;
         html += `<td>${ubicacionAsignada}</td>`;
         html += `<td>${ubicacionActual}</td>`;
-        html += `<td><span class="badge ${getBadgeClass(condicion)}">${condicion}</span></td>`;
+        html += `<td><span class="badge ${getBadgeClass(condicion)}">${escapeCondicion(condicion)}</span></td>`;
 
         // Columnas solo para admin
         if (isAdmin) {
@@ -1351,7 +1313,7 @@ function exportarExcel() {
     datosAExportar.forEach(item => {
         html += `<tr>`;
         todasLasClaves.forEach(c => { let val = item[c] || "-"; if (c === 'evidencia' && val !== "-" && val.trim() !== "") { val = `<a href="${val}" target="_blank">Certificado de descarte</a>`; } html += `<td>${val}</td>`; });
-        html += `<td>${getCondicionItem(item)}</td><td>${getEstadoItem(item)}</td><td>${getGarantiaReemplazo(item)}</td></tr>`;
+        html += `<td>${escapeCondicion(getCondicionItem(item))}</td><td>${getEstadoItem(item)}</td><td>${getGarantiaReemplazo(item)}</td></tr>`;
     });
     html += `</tbody></table><br><br>`;
     html += `<h3 style="color:#0ea5e9;">Reporte General de Observaciones</h3><table border="1" style="font-size:12px;"><thead><tr style="background:#0f172a;color:#fff;"><th>Fecha</th><th>N Extintor</th><th>Observación</th></tr></thead><tbody>`;
@@ -1431,7 +1393,7 @@ function showModal(item) {
             <div class="modal-row"><label>Ubicación actual:</label><value>${ubicacionActual}</value></div>
         </div>
         <div class="modal-section"><div class="modal-section-title"><i class="fas fa-tag"></i> Condición y Estado</div>
-            <div class="modal-row"><label>Condición:</label><value><span class="badge ${getBadgeClass(condicion)}">${condicion}</span></value></div>
+            <div class="modal-row"><label>Condición:</label><value><span class="badge ${getBadgeClass(condicion)}">${escapeCondicion(condicion)}</span></value></div>
             ${isAdmin ? `<div class="modal-row"><label>Estado:</label><value>${estado ? `<span class="badge ${getEstadoBadgeClass(estado)}">${estado}</span>` : ""}</value></div>` : ''}
             ${evidenciaHTML}
             <div class="modal-row"><label>Vencimiento PH:</label><value>${formatMonthYear(item["ph_vencimiento"])}</value></div>
@@ -2108,12 +2070,29 @@ async function finalizarPrestamo(itemIndex) {
 
     let nuevaFechaReal = null;
     const esPrestamoInterno = (prestamo.tipo === 'prestamo_interno');
+    const noRelacionado = prestamo.reemplazo ? String(prestamo.reemplazo) : null;
+    let noOriginal = no;
+
+    if (esPrestamoInterno && noRelacionado) {
+        const candidatos = [no, noRelacionado].filter(num => {
+            const extintor = misDatos.find(x => String(x.N) === num);
+            const movimiento = movimientosPrestamoActivos[num];
+            const ubicacion = String(movimiento?.ubicacion_destino || extintor?.ubicacion_prestamo || '').trim().toLowerCase();
+            return extintor && (extintor.ESTADO === 'Almacén SST' || ubicacion === 'mantenimiento / almacén sst');
+        });
+        if (candidatos.length !== 1) {
+            await showGenericModal('No se pudo identificar el extintor enviado a mantenimiento. Revise los registros antes de finalizar el préstamo.', 'Aviso');
+            return;
+        }
+        noOriginal = candidatos[0];
+    }
 
     if (esPrestamoInterno) {
+        const original = misDatos.find(x => String(x.N) === noOriginal);
         const fechaIngresada = await showPromptModal(
-            'Ingrese la fecha REAL de recarga (MM/AAAA). Se guardará como nuevo vencimiento.',
+            `Ingrese la fecha de vencimiento del extintor N° ${noOriginal} (MM/AAAA).`,
             'Fecha real de recarga',
-            item["F. VENC."] || ''
+            original["F. VENC."] || ''
         );
         if (fechaIngresada === null) return;
         const fechaLimpia = fechaIngresada.trim();
@@ -2128,7 +2107,6 @@ async function finalizarPrestamo(itemIndex) {
         nuevaFechaReal = fechaLimpia;
     }
 
-    let noRelacionado = prestamo.reemplazo || null;
     const numerosAFinalizar = [no];
     if (noRelacionado) numerosAFinalizar.push(noRelacionado);
 
@@ -2139,13 +2117,17 @@ async function finalizarPrestamo(itemIndex) {
             .eq('n_extintor', num)
             .in('tipo', ['prestamo_interno', 'prestamo_unidad'])
             .eq('activo', true);
-        if (movError) console.error(`Error desactivando préstamo para ${num}:`, movError);
+        if (movError) {
+            console.error(`Error desactivando préstamo para ${num}:`, movError);
+            await showGenericModal('No se pudo finalizar el préstamo. Revise los registros antes de reintentar.', 'Error');
+            return;
+        }
 
         const updateData = {
             ubicacion_prestamo: null,
             ESTADO: null
         };
-        if (num === no) {
+        if (num === (esPrestamoInterno ? noOriginal : no)) {
             updateData.proxima_recarga = null;
             if (nuevaFechaReal) {
                 updateData["F. VENC."] = nuevaFechaReal;
@@ -2156,7 +2138,11 @@ async function finalizarPrestamo(itemIndex) {
             .from(TABLA_EXTINTORES)
             .update(updateData)
             .eq('N', num);
-        if (updateError) console.error(`Error actualizando extintor ${num}:`, updateError);
+        if (updateError) {
+            console.error(`Error actualizando extintor ${num}:`, updateError);
+            await showGenericModal('No se pudo actualizar el extintor. Revise los registros antes de reintentar.', 'Error');
+            return;
+        }
     }
 
     for (const num of numerosAFinalizar) {
@@ -2173,10 +2159,10 @@ async function finalizarPrestamo(itemIndex) {
         no: no,
         tipo: 'Retorno',
         personal: 'Sistema',
-        detalle: `Préstamo finalizado${nuevaFechaReal ? ` - Nuevo vencimiento: ${nuevaFechaReal}` : ''}${noRelacionado ? ` - Extintor ${noRelacionado}` : ''}`
+        detalle: `Préstamo finalizado${nuevaFechaReal ? ` - Nuevo vencimiento del extintor ${noOriginal}: ${nuevaFechaReal}` : ''}${noRelacionado ? ` - Extintor ${noRelacionado}` : ''}`
     });
 
-    await showGenericModal('Préstamo finalizado correctamente.' + (nuevaFechaReal ? ` Nuevo vencimiento: ${nuevaFechaReal}` : ''), 'Éxito');
+    await showGenericModal('Préstamo finalizado correctamente.' + (nuevaFechaReal ? ` Nuevo vencimiento del extintor ${noOriginal}: ${nuevaFechaReal}` : ''), 'Éxito');
     closeModal();
     applyFilters();
 }
