@@ -19,7 +19,7 @@ function context(extra = {}) {
     return ctx;
 }
 
-test('condición, tarjetas y filtros usan la fecha de vencimiento independientemente', () => {
+test('condición de administrador y KPI por fecha', () => {
     const data = [
         {N:'1', CONDICION:'Usado', 'F. VENC.':'12/2026'},
         {N:'227', CONDICION:'Despresurizado', 'F. VENC.':'09/27'},
@@ -30,12 +30,16 @@ test('condición, tarjetas y filtros usan la fecha de vencimiento independientem
     ];
     const elements = Object.fromEntries(['area-filter','numero-filter','serie-filter','tipo-filter','capacidad-filter','condicion-filter','kpi-total','kpi-vigentes','kpi-por-vencer','kpi-vencidos'].map(k => [k,{value:'', textContent:''}]));
     let rendered = [];
-    const ctx = context({misDatos:data, currentTab:'todos', currentSubTab:'stock', globalCondicionFilter:'', calPendingDesde:'', calPendingHasta:'', document:{getElementById:id=>elements[id]}, renderTable:items=>{rendered=items;}, updateCounter(){}, actualizarAlertaGarantias(){}, compararNumeros:(a,b)=>Number(a.N)-Number(b.N), itemMatchesDateRange:()=>true});
+    const ctx = context({isAdmin:true, misDatos:data, currentTab:'todos', currentSubTab:'stock', globalCondicionFilter:'', calPendingDesde:'', calPendingHasta:'', document:{getElementById:id=>elements[id]}, renderTable:items=>{rendered=items;}, updateCounter(){}, actualizarAlertaGarantias(){}, compararNumeros:(a,b)=>Number(a.N)-Number(b.N), itemMatchesDateRange:()=>true});
     vm.runInContext(section('function actualizarTarjetasResumen()', 'function renderTable(data)'), ctx);
     assert.equal(ctx.getCondicionItem(data[0]), 'Usado');
     assert.equal(ctx.getCondicionItem(data[1]), 'Despresurizado');
     assert.equal(ctx.getCondicionItem(data[2]), 'Dañado');
     assert.equal(ctx.getCondicionItem(data[4]), 'Vencido');
+    assert.equal(ctx.getCondicionItem(data[5]), 'Baja');
+    assert.equal(ctx.getCondicionItem({CONDICION:'-', 'F. VENC.':'12/2026'}), 'Vigente');
+    assert.equal(ctx.getCondicionItem({CONDICION:'No ubicado', 'F. VENC.':'10/2026'}), 'Vencido');
+    assert.equal(ctx.getCondicionItem({CONDICION:'Vigente', 'F. VENC.':'10/2026'}), 'Vencido');
     assert.equal(ctx.isItemExpired(data[0]), false);
     assert.equal(ctx.getEstadoVencimiento(data[3]), 'Vigente');
     ctx.applyFilters();
@@ -46,8 +50,15 @@ test('condición, tarjetas y filtros usan la fecha de vencimiento independientem
     assert.deepEqual(Array.from(rendered, x=>x.N), ['3','5']);
     ctx.globalCondicionFilter = 'Vigente'; ctx.applyFilters();
     assert.deepEqual(Array.from(rendered, x=>x.N), ['1','4','227']);
-    ctx.globalCondicionFilter = ''; elements['condicion-filter'].value = 'Vencido'; ctx.applyFilters();
-    assert.deepEqual(Array.from(rendered, x=>x.N), ['3','5']);
+    ctx.globalCondicionFilter = ''; ctx.isAdmin = false;
+    assert.equal(ctx.getCondicionItem(data[0]), 'Vencido');
+    assert.equal(ctx.getCondicionItem(data[1]), 'Vencido');
+    assert.equal(ctx.getCondicionItem({CONDICION:'Dañado', 'F. VENC.':'12/2026'}), 'Vencido');
+    assert.equal(ctx.getCondicionItem({CONDICION:'No ubicado', 'F. VENC.':'12/2026'}), 'Vigente');
+    elements['condicion-filter'].value = 'Vencido'; ctx.applyFilters();
+    assert.deepEqual(Array.from(rendered, x=>x.N), ['1','3','5','227']);
+    elements['condicion-filter'].value = 'Vigente'; ctx.applyFilters();
+    assert.deepEqual(Array.from(rendered, x=>x.N), ['4']);
     assert.equal(ctx.escapeCondicion('<img src=x>'), '&lt;img src=x&gt;');
 });
 
