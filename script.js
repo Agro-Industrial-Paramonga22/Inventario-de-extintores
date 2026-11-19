@@ -612,7 +612,9 @@ function isItemExpired(item) {
 // ============================================================
 function getCondicionItem(item) {
     const condicion = String(item["CONDICION"] ?? "").trim();
-    return condicion || (isItemExpired(item) ? "Vencido" : "Vigente");
+    const condicionFisica = ['Usado', 'Despresurizado', 'Dañado'].includes(condicion);
+    if (isAdmin && (condicionFisica || condicion === 'Baja')) return condicion;
+    return isItemExpired(item) || (!isAdmin && condicionFisica) ? "Vencido" : "Vigente";
 }
 function escapeCondicion(valor) {
     return String(valor).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1039,12 +1041,9 @@ function applyFilters() {
         if (tipoVal && (item["TIPO"] || "").toUpperCase().trim() !== tipoVal) return false;
         if (capVal && (item["CAP."] || "").toLowerCase().trim() !== capVal) return false;
 
-        // Los KPI y las opciones públicas Vigente/Vencido dependen de la fecha.
+        // Los KPI administrativos usan la fecha; el filtro público usa la condición mostrada.
         if (globalCondicionFilter && getEstadoVencimiento(item) !== globalCondicionFilter) return false;
-        if (!globalCondicionFilter && condVal) {
-            if (condVal === 'Vencido' && !isItemExpired(item)) return false;
-            if (condVal === 'Vigente' && isItemExpired(item)) return false;
-        }
+        if (!globalCondicionFilter && condVal && getCondicionItem(item) !== condVal) return false;
 
         // --- FILTRO DE RANGO DE FECHAS (CALENDARIO) ---
         if ((calPendingDesde || calPendingHasta) && !itemMatchesDateRange(item, calPendingDesde, calPendingHasta)) {
