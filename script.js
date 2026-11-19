@@ -28,22 +28,6 @@
     syncOnLoad();
 })();
 
-function actualizarEstadoCondicionFilter() {
-    const condicionSelect = document.getElementById('condicion-filter');
-    if (!condicionSelect) return;
-
-    if (isAdmin) {
-        condicionSelect.disabled = false;
-        return;
-    }
-
-    const tieneArea = responsableFilter.value.trim() !== '';
-    condicionSelect.disabled = !tieneArea;
-
-    if (!tieneArea) {
-        condicionSelect.value = '';
-    }
-}
 // ============================================================
 //  CONFIGURACIÓN SUPABASE
 // ============================================================
@@ -83,24 +67,73 @@ let misDatos = [];
 let movimientosActivos = {};
 let movimientosPrestamoActivos = {};
 let movimientosGarantiaActivos = {};
-let bajaArchivo = null;
 let nuevoReemplazoData = {};
 let editorModoCreacion = false;
+let currentTab = 'todos';
+let currentSubTab = 'stock';
+let globalCondicionFilter = '';
 
-function actualizarVisibilidadFiltros() {
-    const numeroGroup = document.getElementById('numero-filter')?.closest('.filter-group');
-    const dateWrap = document.querySelector('.date-filter-wrap');
-    const condicionGroup = document.getElementById('condicion-filter')?.closest('.filter-group');
+function limpiarFiltros() {
+    document.getElementById('area-filter').value = '';
+    document.getElementById('numero-filter').value = '';
+    document.getElementById('serie-filter').value = '';
+    document.getElementById('tipo-filter').value = '';
+    document.getElementById('capacidad-filter').value = '';
+      const condSelect = document.getElementById('condicion-filter');
+    if (condSelect) condSelect.value = '';
+    
+    globalCondicionFilter = ''; // <--- ESTA ES LA LÍNEA QUE FALTABA
+    
+    calRangeStart = null;
+    calRangeEnd = null;
+    calPendingDesde = "";
+    calPendingHasta = "";
+    updateDateLabel();
+    applyFilters();
+}
+function cambiarTab(tab, element) {
+    currentTab = tab;
+     globalCondicionFilter = '';
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (element) element.classList.add('active');
 
-    const displayAdmin = isAdmin ? '' : 'none';
-    if (numeroGroup) numeroGroup.style.display = displayAdmin;
-    if (dateWrap) dateWrap.style.display = displayAdmin;
+    const subTabs = document.getElementById('sub-tabs-almacen');
+    if (tab === 'almacen') {
+        subTabs.style.display = 'flex';
+    } else {
+        subTabs.style.display = 'none';
+    }
 
-    if (condicionGroup) condicionGroup.style.display = '';
+    actualizarVisibilidadFiltros();
+    applyFilters();
+}
 
-    if (!isAdmin && numeroFilter) numeroFilter.value = '';
+function cambiarSubTab(subTab, element) {
+    currentSubTab = subTab;
+    const btnStock = document.getElementById('btn-sub-stock');
+    const btnAsig = document.getElementById('btn-sub-asignados');
+    const btnOtras = document.getElementById('btn-sub-otras'); // <-- NUEVO
 
-    actualizarEstadoCondicionFilter();
+    // Resetear estilos
+    [btnStock, btnAsig, btnOtras].forEach(btn => {
+        if(btn) { btn.style.background = '#fff'; btn.style.color = '#64748b'; btn.style.border = '1px solid #cbd5e1'; }
+    });
+
+    // Pintar de verde el activo
+    if (subTab === 'stock') { btnStock.style.background = '#16a34a'; btnStock.style.color = 'white'; btnStock.style.border = 'none'; }
+    else if (subTab === 'asignados') { btnAsig.style.background = '#16a34a'; btnAsig.style.color = 'white'; btnAsig.style.border = 'none'; }
+    else if (subTab === 'otras') { btnOtras.style.background = '#16a34a'; btnOtras.style.color = 'white'; btnOtras.style.border = 'none'; }
+
+    applyFilters();
+}
+function filtrarPorKPI(tipo) {
+    if (currentTab !== 'todos') {
+        cambiarTab('todos', document.querySelector('.tab-btn')); 
+    }
+    if (tipo === 'vigente') globalCondicionFilter = 'Vigente';
+    else if (tipo === 'por_vencer') globalCondicionFilter = 'PorVencer';
+    else if (tipo === 'vencido') globalCondicionFilter = 'Vencido';
+    applyFilters();
 }
 
 // ============================================================
@@ -273,31 +306,6 @@ function crearAutocomplete({ input, dropdown, clearBtn, getOptions, onSelect, on
 }
 
 // ============================================================
-//  MENÚ HAMBURGUESA
-// ============================================================
-const menuBtn = document.getElementById('menuBtn');
-const menuDropdown = document.getElementById('menuDropdown');
-
-function toggleMenu() {
-    menuDropdown.classList.toggle('open');
-}
-
-function cerrarMenu() {
-    menuDropdown.classList.remove('open');
-}
-
-menuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleMenu();
-});
-
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.header-container')) {
-        cerrarMenu();
-    }
-});
-
-// ============================================================
 //  MODALES GENÉRICOS
 // ============================================================
 let genericResolve = null;
@@ -346,93 +354,109 @@ document.getElementById('prompt-modal').addEventListener('click', (e) => { if (e
 // ============================================================
 //  ADMINISTRADOR Y FILTROS
 // ============================================================
-function actualizarOpcionesCondicion() {
-    const select = document.getElementById('condicion-filter');
-    const valorActual = select.value;
-    select.innerHTML = '';
-
-    const opcionesBase = [
-        { value: '', label: 'Condición' },
-        { value: 'Vigente', label: 'Vigente' },
-        { value: 'Vencido', label: 'Vencido' }
-    ];
-
-    const opcionesAdmin = [
-        { value: 'Mantenimiento', label: 'Mantenimiento' },
-        { value: 'Usado', label: 'Usado' },
-        { value: 'Despresurizado', label: 'Despresurizado' },
-        { value: 'Dañado', label: 'Dañado' },
-        { value: 'Baja', label: 'Baja' }
-    ];
-
-    const opciones = isAdmin ? [...opcionesBase, ...opcionesAdmin] : opcionesBase;
-
-    opciones.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        select.appendChild(option);
-    });
-
-    const valoresDisponibles = opciones.map(o => o.value);
-    select.value = valoresDisponibles.includes(valorActual) ? valorActual : '';
-}
-
 function actualizarMenuAdmin() {
-    const adminText = document.getElementById('menuAdminText');
-    const adminBadge = document.getElementById('menuAdminBadge');
-    const menuObservaciones = document.getElementById('menuObservaciones');
-    const menuHistorial = document.getElementById('menuHistorial');
-    const menuExportar = document.getElementById('menuExportar');
-    const menuAgregarExtintor = document.getElementById('menuAgregarExtintor');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnObservaciones = document.getElementById('btnObservaciones');
+    const btnHistorial = document.getElementById('btnHistorial');
+    const btnExportar = document.getElementById('btnExportar');
+    
+    // Botones que agregaremos en el siguiente paso
+    const btnAgregarExtintor = document.getElementById('btnAgregarExtintor');
+    const menuDescartados = document.getElementById('menuDescartados'); 
 
     if (isAdmin) {
         const nombreAdmin = sessionStorage.getItem('extintor_admin_nombre') || 'Administrador';
         const rolAdmin = sessionStorage.getItem('extintor_admin_rol') || 'admin';
-        adminText.textContent = `${nombreAdmin} (${rolAdmin})`;
-
-        adminBadge.style.display = 'inline-block';
-        adminBadge.textContent = 'ACTIVO';
-        adminBadge.className = 'badge-admin active';
-
-        menuObservaciones.style.display = 'flex';
-        menuHistorial.style.display = 'flex';
-        menuExportar.style.display = 'flex';
-
-        if (menuAgregarExtintor) {
-            menuAgregarExtintor.style.display = 'flex';
+        
+        // Cambiamos el botón de login por el perfil del admin
+        if (btnLogin) {
+            btnLogin.innerHTML = `<i class="fas fa-user-circle"></i> ${nombreAdmin} (${rolAdmin})`;
+            btnLogin.style.background = '#dcfce7';
+            btnLogin.style.color = '#15803d';
         }
+
+        // Mostramos los botones de acciones
+        if (btnObservaciones) btnObservaciones.style.display = 'inline-flex';
+        if (btnHistorial) btnHistorial.style.display = 'inline-flex';
+        if (btnExportar) btnExportar.style.display = 'inline-flex';
+        
+        if (btnAgregarExtintor) btnAgregarExtintor.style.display = 'inline-flex';
+        if (menuDescartados) menuDescartados.style.display = 'inline-flex';
+
     } else {
-        adminText.textContent = 'Modo Administrador';
-        adminBadge.style.display = 'none';
-
-        menuObservaciones.style.display = 'none';
-        menuHistorial.style.display = 'none';
-        menuExportar.style.display = 'none';
-
-        if (menuAgregarExtintor) {
-            menuAgregarExtintor.style.display = 'none';
+        // Estado público (Sin loguear)
+        if (btnLogin) {
+            btnLogin.innerHTML = `<i class="fas fa-user-circle"></i> Ingresar`;
+            btnLogin.style.background = '#f1f5f9';
+            btnLogin.style.color = '#0f172a';
         }
+
+        // Ocultamos los botones de acciones
+        if (btnObservaciones) btnObservaciones.style.display = 'none';
+        if (btnHistorial) btnHistorial.style.display = 'none';
+        if (btnExportar) btnExportar.style.display = 'none';
+        
+        if (btnAgregarExtintor) btnAgregarExtintor.style.display = 'none';
+        if (menuDescartados) menuDescartados.style.display = 'none';
     }
 }
 
 function aplicarPermisos() {
     const estadoHeader = document.getElementById('estado-header');
     const garantiaHeader = document.getElementById('garantia-header');
+    const tableHead = document.getElementById('table-head');
+    const mainTabs = document.getElementById('main-tabs');
+    const subTabs = document.getElementById('sub-tabs-almacen');
+    const kpiGrid = document.querySelector('.kpi-grid'); // <-- NUEVO
 
-    if (!isAdmin) {
-        if (estadoHeader) estadoHeader.style.display = 'none';
-    } else {
-        if (estadoHeader) estadoHeader.style.display = 'table-cell';
+    if (tableHead) {
+        const ths = tableHead.querySelectorAll('th');
+        if (isAdmin) {
+            // ADMIN: Ve todo
+            ths.forEach(th => th.style.display = 'table-cell');
+            if (estadoHeader) estadoHeader.style.display = 'table-cell';
+            if (garantiaHeader) garantiaHeader.style.display = 'table-cell';
+            if (mainTabs) mainTabs.style.display = 'flex';
+            if (subTabs && currentTab === 'almacen') subTabs.style.display = 'flex';
+            if (kpiGrid) kpiGrid.style.display = 'grid'; // mostrar KPIs
+        } else {
+            // PÚBLICO: solo oculta GARANTÍA (8) y ESTADO (9)
+            ths.forEach((th, index) => {
+                if ([8, 9].includes(index + 1)) {
+                    th.style.display = 'none';
+                } else {
+                    th.style.display = 'table-cell';
+                }
+            });
+            if (mainTabs) mainTabs.style.display = 'none';
+            if (subTabs) subTabs.style.display = 'none';
+            if (kpiGrid) kpiGrid.style.display = 'none'; // ocultar KPIs
+        }
     }
-
+    
     actualizarOpcionesCondicion();
     actualizarMenuAdmin();
     actualizarVisibilidadFiltros();
-
-    if (garantiaHeader) garantiaHeader.style.display = 'table-cell';
 }
+function actualizarOpcionesCondicion() {
+    const select = document.getElementById('condicion-filter');
+    if (!select) return;
 
+    // Si es admin, no hacemos nada porque el filtro está oculto
+    if (isAdmin) return;
+
+    const valorActual = select.value;
+    select.innerHTML = `
+        <option value="">Todas las condiciones</option>
+        <option value="Vigente">Vigente</option>
+        <option value="Vencido">Vencido</option>
+    `;
+    
+    // Mantener la selección si ya había una válida
+    if (['Vigente', 'Vencido'].includes(valorActual)) {
+        select.value = valorActual;
+    }
+}
 async function cargarMovimientosActivos() {
     try {
         const { data, error } = await supabaseClient
@@ -755,57 +779,111 @@ function itemMatchesDateRange(item, desde, hasta) {
     if (fin !== null && fechaItem > fin) return false;
     return true;
 }
+function actualizarVisibilidadFiltros() {
+    const gArea = document.getElementById('filter-group-area');
+    const gNumero = document.getElementById('filter-group-numero');
+    const gSerie = document.getElementById('filter-group-serie');
+    const gVencimiento = document.getElementById('filter-group-vencimiento');
+    const gTipo = document.getElementById('tipo-filter')?.closest('.filter-group');
+    const gCapacidad = document.getElementById('capacidad-filter')?.closest('.filter-group');
+    const gCondicion = document.getElementById('filter-group-condicion');
 
+    if (isAdmin) {
+        // Admin ve todo menos Condición
+        if (gArea) gArea.style.display = 'block';
+        if (gNumero) gNumero.style.display = 'block';
+        if (gSerie) gSerie.style.display = 'block';
+        if (gVencimiento) gVencimiento.style.display = 'block';
+        if (gTipo) gTipo.style.display = 'block';
+        if (gCapacidad) gCapacidad.style.display = 'block';
+        if (gCondicion) gCondicion.style.display = 'none'; 
+    } else {
+        // Público ve SOLO Área y Condición
+        if (gArea) gArea.style.display = 'block';
+        if (gCondicion) gCondicion.style.display = 'block';
+        if (gNumero) gNumero.style.display = 'none';
+        if (gSerie) gSerie.style.display = 'none';
+        if (gVencimiento) gVencimiento.style.display = 'none';
+        if (gTipo) gTipo.style.display = 'none';
+        if (gCapacidad) gCapacidad.style.display = 'none';
+    }
+}
 // ============================================================
-//  FILTROS Y RENDER
+//  FILTROS DINÁMICOS (TIPO Y CAPACIDAD)
 // ============================================================
-function applyFilters() {
-    actualizarEstadoCondicionFilter();
 
-    const selectedResponsable = responsableFilter.value.trim();
-    const selectedNumero = (isAdmin && numeroFilter) ? numeroFilter.value.trim().toLowerCase() : "";
-    const selectedDesde = isAdmin ? (calPendingDesde || "") : "";
-    const selectedHasta = isAdmin ? (calPendingHasta || "") : "";
-    const selectedCondicion = (isAdmin || selectedResponsable) ? condicionFilter.value : "";
+function actualizarFiltrosDesdeDB() {
+    if (!misDatos || misDatos.length === 0) return;
 
-    currentFilteredData = misDatos.filter(item => {
-        const no = String(item["N"]);
-        const responsableActual = String(item["AREA RESPONSABLE"] ?? "").trim();
-        let matchResponsable = true;
-        if (selectedResponsable) {
-            const sel = selectedResponsable.toLowerCase();
-            matchResponsable = responsableActual.toLowerCase() === sel;
-
-            if (!matchResponsable) {
-                const prest = movimientosPrestamoActivos[no];
-                if (prest && String(prest.responsable_destino || '').toLowerCase() === sel) {
-                    matchResponsable = true;
-                }
-            }
-            if (!matchResponsable && item["ubicacion_prestamo"]) {
-                if (item["ubicacion_prestamo"].toLowerCase().includes(`préstamo a: ${sel}`)) matchResponsable = true;
-            }
+    const tiposSet = new Set();
+    misDatos.forEach(item => {
+        if (item["TIPO"] && String(item["TIPO"]).trim() !== "") {
+            tiposSet.add(String(item["TIPO"]).trim().toUpperCase());
         }
-        if (!matchResponsable) return false;
-        if (selectedNumero && !String(item["N"] ?? "").toLowerCase().includes(selectedNumero)) return false;
-        if (!itemMatchesDateRange(item, selectedDesde, selectedHasta)) return false;
+    });
+    const tiposArray = Array.from(tiposSet).sort();
 
-        const condicionActual = getCondicionItem(item);
+    const tipoSelect = document.getElementById('tipo-filter');
+    const valorTipoActual = tipoSelect.value;
 
-        if (condicionActual === 'Baja' && extintoresReemplazados[no]) {
-            return false;
+    tipoSelect.innerHTML = '<option value="">Todos los tipos</option>';
+    tiposArray.forEach(tipo => {
+        tipoSelect.innerHTML += `<option value="${tipo}">${tipo}</option>`;
+    });
+    
+    if (tiposArray.includes(valorTipoActual)) {
+        tipoSelect.value = valorTipoActual;
+    } else {
+        tipoSelect.value = "";
+    }
+
+    actualizarCapacidadesPorTipo();
+}
+
+function actualizarCapacidadesPorTipo() {
+    const tipoSelect = document.getElementById('tipo-filter');
+    const capacidadSelect = document.getElementById('capacidad-filter');
+    const tipoSeleccionado = tipoSelect.value.toUpperCase();
+
+    const capacidadesSet = new Set();
+    
+    misDatos.forEach(item => {
+        if (tipoSeleccionado && String(item["TIPO"]).toUpperCase().trim() !== tipoSeleccionado) {
+            return;
         }
-
-        if (!isAdmin && condicionActual === 'Baja') return false;
-
-        if (selectedCondicion && condicionActual !== selectedCondicion) return false;
-        return true;
+        
+        if (item["CAP."] && String(item["CAP."]).trim() !== "") {
+            let cap = String(item["CAP."]).trim().toLowerCase();
+            capacidadesSet.add(cap);
+        }
     });
 
-    renderTable(currentFilteredData);
-    updateCounter(currentFilteredData.length, misDatos.length);
-    actualizarAlertaGarantias();
+    const capacidadesArray = Array.from(capacidadesSet).sort((a, b) => {
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+        return a.localeCompare(b);
+    });
+
+    const valorCapActual = capacidadSelect.value.toLowerCase();
+
+    capacidadSelect.innerHTML = '<option value="">Cualquier capacidad</option>';
+    capacidadesArray.forEach(cap => {
+        capacidadSelect.innerHTML += `<option value="${cap}">${cap}</option>`;
+    });
+
+    if (capacidadesArray.includes(valorCapActual)) {
+        capacidadSelect.value = valorCapActual;
+    } else {
+        capacidadSelect.value = "";
+    }
 }
+
+// Escuchar cuando el usuario cambie el tipo de extintor
+document.getElementById('tipo-filter').addEventListener('change', () => {
+    actualizarCapacidadesPorTipo();
+    applyFilters(); 
+});
 
 function compararNumeros(a, b) {
     const na = Number(String(a["N"] ?? "").replace(",", "."));
@@ -829,43 +907,200 @@ function poblarResponsables() {
 }
 
 function inicializarAutocompletes() {
-    const respInput = document.getElementById('responsable-filter');
-    const respDropdown = document.getElementById('responsable-dropdown');
-    const respClear = document.getElementById('responsable-clear');
-
-    responsableAutocomplete = crearAutocomplete({
-        input: respInput,
-        dropdown: respDropdown,
-        clearBtn: respClear,
-        getOptions: obtenerAreasResponsables,
-        onSelect: () => applyFilters(),
-        onInput: () => applyFilters()
-    });
-
     const areaInput = document.getElementById('unidad-area');
     const areaDropdown = document.getElementById('unidad-area-dropdown');
     const areaClear = document.getElementById('unidad-area-clear');
 
-    unidadAreaAutocomplete = crearAutocomplete({
-        input: areaInput,
-        dropdown: areaDropdown,
-        clearBtn: areaClear,
-        getOptions: obtenerAreasResponsables
-    });
+    if (areaInput) {
+        unidadAreaAutocomplete = crearAutocomplete({
+            input: areaInput,
+            dropdown: areaDropdown,
+            clearBtn: areaClear,
+            getOptions: obtenerAreasResponsables
+        });
+    }
+        const filtroAreaInput = document.getElementById('area-filter');
+    const filtroAreaDropdown = document.getElementById('area-dropdown');
+    const filtroAreaClear = document.getElementById('area-clear');
+
+    if (filtroAreaInput) {
+        crearAutocomplete({
+            input: filtroAreaInput,
+            dropdown: filtroAreaDropdown,
+            clearBtn: filtroAreaClear,
+            getOptions: obtenerAreasResponsables,
+            onSelect: () => applyFilters(),
+            onInput: () => applyFilters()
+        });
+    }
 }
 
 function updateCounter(mostrados, total) {
     counterDisplay.innerHTML = `Mostrando <strong>${mostrados}</strong> de <strong>${total}</strong> extintores`;
 }
+function actualizarTarjetasResumen() {
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiVigentes = document.getElementById('kpi-vigentes');
+    const kpiPorVencer = document.getElementById('kpi-por-vencer');
+    const kpiVencidos = document.getElementById('kpi-vencidos');
+    
+    if (!kpiTotal) return;
 
+    const activos = misDatos.filter(item => item["CONDICION"] !== 'Baja');
+    
+    let vigentes = 0;
+    let vencidos = 0;
+    let porVencer = 0;
+
+    const hoy = new Date();
+    const mesActual = hoy.getFullYear() * 12 + hoy.getMonth();
+
+    activos.forEach(item => {
+        const fechaEfectiva = (item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "")
+            ? item["proxima_recarga"]
+            : item["F. VENC."];
+        const mesVencimiento = getMonthIndex(fechaEfectiva);
+        const cond = String(item["CONDICION"] || '').trim();
+        
+        const esVencidoFecha = isItemExpired(item);
+        const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(cond);
+
+        if (esVencidoFecha || esCondicionMala) {
+            vencidos++;
+        } else if (mesVencimiento !== null && mesVencimiento === mesActual) {
+            porVencer++;
+        } else {
+            vigentes++;
+        }
+    });
+
+    kpiTotal.textContent = activos.length;
+    kpiVigentes.textContent = vigentes;
+    kpiPorVencer.textContent = porVencer;
+    kpiVencidos.textContent = vencidos;
+}
+// ============================================================
+//  APLICAR FILTROS (LA FUNCIÓN QUE FALTABA)
+// ============================================================
+function applyFilters() {
+    // 1. Obtener valores de los inputs
+    const areaVal = document.getElementById('area-filter')?.value.toLowerCase().trim() || '';
+    const numeroVal = document.getElementById('numero-filter')?.value.toLowerCase().trim() || '';
+    const serieVal = document.getElementById('serie-filter')?.value.toLowerCase().trim() || '';
+    const tipoVal = document.getElementById('tipo-filter')?.value.toUpperCase().trim() || '';
+    const capVal = document.getElementById('capacidad-filter')?.value.toLowerCase().trim() || '';
+    const condSelect = document.getElementById('condicion-filter');
+    const condVal = condSelect ? condSelect.value : '';
+
+    // 2. Filtrar los datos
+    let filtered = misDatos.filter(item => {
+        // --- FILTRO POR TABS PRINCIPALES ---
+        if (currentTab === 'descartados') {
+            if (item["CONDICION"] !== "Baja") return false;
+        } else {
+            // En 'Todos' y 'Almacén', ocultamos los dados de baja
+            if (item["CONDICION"] === "Baja") return false;
+        }
+
+           // --- FILTRO POR SUBTABS (ALMACÉN SST) ---
+        if (currentTab === 'almacen') {
+            const areaResp = String(item["AREA RESPONSABLE"] || "").trim().toUpperCase();
+            const ubicAsignada = String(item["UBICACION"] || "").trim().toUpperCase();
+            
+            let ubicActual = String(item["ubicacion_prestamo"] || "").trim().toLowerCase();
+            if (ubicActual === 'null' || ubicActual === '-') ubicActual = "";
+            
+            const estado = String(item["ESTADO"] || "").trim().toUpperCase();
+
+            // Regla 1: Es propio del SST y su ubicación asignada es STOCK
+            const isSstStock = areaResp.includes("SST") && ubicAsignada.includes("STOCK");
+            
+            // Regla 2: Es de otra área, pero está en mantenimiento/almacén
+            const isOtraAreaEnAlmacen = !isSstStock && (
+                estado.includes("ALMACÉN SST") || 
+                estado.includes("MANTENIMIENTO") || 
+                ubicActual.includes("mantenimiento / almacén sst")
+            );
+
+            if (currentSubTab === 'stock') {
+                if (!isSstStock || ubicActual !== "") return false;
+            } 
+            else if (currentSubTab === 'asignados') {
+                if (!isSstStock || ubicActual === "") return false;
+            }
+            else if (currentSubTab === 'otras') {
+                if (!isOtraAreaEnAlmacen) return false;
+            }
+        }
+
+        // --- FILTROS DE TEXTO ---
+        if (areaVal && !(item["AREA RESPONSABLE"] || "").toLowerCase().includes(areaVal)) return false;
+        if (numeroVal && !String(item["N"] || "").toLowerCase().includes(numeroVal)) return false;
+        if (serieVal && !(item["N SERIE ACTUAL"] || "").toLowerCase().includes(serieVal)) return false;
+        
+        // --- FILTROS SELECT (TIPO Y CAPACIDAD) ---
+        if (tipoVal && (item["TIPO"] || "").toUpperCase().trim() !== tipoVal) return false;
+        if (capVal && (item["CAP."] || "").toLowerCase().trim() !== capVal) return false;
+
+        // --- FILTRO DE CONDICIÓN (KPI O SELECT) ---
+        const condActual = getCondicionItem(item);
+        
+        // Si se hizo clic en un KPI (Vigente, Vencido, Por Vencer)
+        if (globalCondicionFilter) {
+            if (globalCondicionFilter === 'PorVencer') {
+                const fechaEfectiva = (item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "") 
+                    ? item["proxima_recarga"] : item["F. VENC."];
+                const mesVencimiento = getMonthIndex(fechaEfectiva);
+                const hoy = new Date();
+                const mesActual = hoy.getFullYear() * 12 + hoy.getMonth();
+                const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(String(item["CONDICION"] || '').trim());
+                const esVencido = isItemExpired(item);
+                
+                // Si no es vencido, ni condición mala, y su mes es el actual -> Es por vencer
+                if (esVencido || esCondicionMala || mesVencimiento !== mesActual) return false;
+            } else {
+                // Vigente o Vencido directo
+                if (condActual !== globalCondicionFilter) return false;
+            }
+        }
+        
+        // Si se usó el select de condición (solo visible para público)
+        if (!globalCondicionFilter && condVal && condActual !== condVal) return false;
+
+        // --- FILTRO DE RANGO DE FECHAS (CALENDARIO) ---
+        if ((calPendingDesde || calPendingHasta) && !itemMatchesDateRange(item, calPendingDesde, calPendingHasta)) {
+            return false;
+        }
+
+        return true;
+    });
+
+    // 3. Ordenar los resultados
+    currentFilteredData = filtered.sort(compararNumeros);
+
+    // 4. Renderizar la tabla y actualizar contadores
+    renderTable(currentFilteredData);
+    
+    // El total mostrado depende de en qué pestaña esté el usuario
+    const totalTab = currentTab === 'descartados' 
+        ? misDatos.filter(i => i["CONDICION"] === 'Baja').length 
+        : misDatos.filter(i => i["CONDICION"] !== 'Baja').length;
+        
+    updateCounter(currentFilteredData.length, totalTab);
+    
+    // 5. Actualizar KPIs y alertas
+    actualizarTarjetasResumen();
+    actualizarAlertaGarantias();
+}
 function renderTable(data) {
     tableBody.innerHTML = "";
     if (data.length === 0) {
-        const cols = isAdmin ? 7 : 6;
+        // Público: N°, TIPO, CAP, ÁREA, UBIC ASIG, UBIC ACT, CONDICIÓN = 7 columnas
+        const cols = isAdmin ? 9 : 7;
         tableBody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center; padding:24px; color:#94a3b8;">No hay resultados.</td></tr>`;
         return;
     }
-    const mostrarEstado = isAdmin;
+    
     [...data].sort(compararNumeros).forEach((item) => {
         const condicion = getCondicionItem(item);
         const estado = getEstadoItem(item);
@@ -878,18 +1113,22 @@ function renderTable(data) {
         const row = document.createElement('tr');
         row.setAttribute('data-index', misDatos.indexOf(item));
 
-        let html = `
-            <td><strong>${item["N"] || "-"}</strong></td>
-            <td>${item["AREA RESPONSABLE"] || "-"}</td>
-            <td>${ubicacionAsignada}</td>
-            <td>${ubicacionActual}</td>
-            <td><span class="badge ${getBadgeClass(condicion)}">${condicion}</span></td>
-            <td>${garantiaReemplazo}</td>
-        `;
-        if (mostrarEstado) {
+        // Columnas comunes (admin y público)
+        let html = `<td><strong>${item["N"] || "-"}</strong></td>`;
+        html += `<td>${item["TIPO"] || "-"}</td>`;
+        html += `<td>${item["CAP."] || "-"}</td>`;
+        html += `<td>${item["AREA RESPONSABLE"] || "-"}</td>`;
+        html += `<td>${ubicacionAsignada}</td>`;
+        html += `<td>${ubicacionActual}</td>`;
+        html += `<td><span class="badge ${getBadgeClass(condicion)}">${condicion}</span></td>`;
+
+        // Columnas solo para admin
+        if (isAdmin) {
+            html += `<td>${garantiaReemplazo}</td>`;
             const estadoMostrar = estado || "";
             html += `<td>${estadoMostrar ? `<span class="badge ${getEstadoBadgeClass(estado)}">${estado}</span>` : ""}</td>`;
         }
+
         row.innerHTML = html;
         row.addEventListener('click', () => {
             currentItemIndex = parseInt(row.getAttribute('data-index'));
@@ -1221,29 +1460,114 @@ function closeModal() { detailModal.classList.remove('active'); }
 function openLoanForm(itemIndex) {
     currentItemIndex = itemIndex;
     closeModal();
+    
+    // Limpiar todos los campos
     document.getElementById('personal-cambio').value = '';
     document.getElementById('extintor-reemplazo').value = '';
     document.getElementById('motivo-select').value = 'Usado';
     document.getElementById('proxima-recarga').value = '';
+    
     document.getElementById('garantia-personal').value = '';
     document.getElementById('garantia-reemplazo').value = '';
+    
     document.getElementById('unidad-area').value = '';
     document.getElementById('unidad-responsable').value = '';
     document.getElementById('unidad-asignada').value = '';
+    
+    document.getElementById('traslado-motivo').value = 'Usado';
+    document.getElementById('traslado-personal').value = '';
+    document.getElementById('traslado-proxima-recarga').value = '';
+
     if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
     
-    document.getElementById('tipo-prestamo').value = 'interno';
+    document.getElementById('tipo-prestamo').value = 'unidad';
     toggleCamposPrestamo();
     loanModal.classList.add('active');
 }
+
 function closeLoanModal() {
     loanModal.classList.remove('active');
 }
+
+async function confirmarTrasladoAlmacen() {
+    const item = misDatos[currentItemIndex];
+    const no = String(item["N"]);
+    const motivo = document.getElementById('traslado-motivo').value;
+    const personal = document.getElementById('traslado-personal').value.trim();
+    const proximaRecarga = document.getElementById('traslado-proxima-recarga').value.trim();
+
+    if (!personal) {
+        await showGenericModal('Por favor ingrese el personal a cargo.', 'Aviso');
+        return;
+    }
+    if (proximaRecarga && !getMonthYear(proximaRecarga)) {
+        await showGenericModal('Formato de fecha inválido. Use MM/AAAA (ej. 03/2028).', 'Aviso');
+        return;
+    }
+
+    const btn = loanModal.querySelector('.modal-actions .btn-primary');
+    const txtOrig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+    try {
+        const fechaOriginal = item["F. VENC."] || "-";
+        const updateData = {
+            ubicacion_prestamo: 'Mantenimiento / Almacén SST',
+            CONDICION: motivo,
+            ESTADO: 'Almacén SST',
+            observaciones: (item["observaciones"] || '') + `\n[Traslado Almacén ${new Date().toLocaleDateString('es-ES')}] Motivo: ${motivo} - Vencía: ${fechaOriginal}${proximaRecarga ? ' → Próx. recarga: ' + proximaRecarga : ''}`
+        };
+        if (proximaRecarga) updateData.proxima_recarga = proximaRecarga;
+
+        const { error: updError } = await supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no);
+        if (updError) throw updError;
+
+        const detalle = `Traslado a Almacén - Motivo: ${motivo} - Personal: ${personal}${proximaRecarga ? ' - Próx. recarga: ' + proximaRecarga : ''}`;
+        const { data: movData, error: movError } = await supabaseClient.from(TABLA_MOVIMIENTOS).insert({
+            n_extintor: no,
+            tipo: 'prestamo_interno', 
+            personal: personal,
+            motivo: motivo,
+            reemplazo: null, 
+            responsable_destino: 'SST',
+            ubicacion_destino: 'Mantenimiento / Almacén SST',
+            detalle: detalle,
+            activo: true
+        }).select().single();
+
+        if (movError) throw movError;
+
+        await actualizarUnExtintor(no);
+        await cargarMovimientosActivos();
+
+        historialCompleto.unshift({
+            id: movData.id,
+            fecha: new Date().toLocaleString('es-ES'),
+            no: no,
+            tipo: 'Traslado a Almacén',
+            personal: personal,
+            detalle: detalle
+        });
+
+        closeLoanModal();
+        applyFilters();
+        await showGenericModal('Extintor trasladado al almacén correctamente.', 'Éxito');
+
+    } catch (err) {
+        console.error(err);
+        await showGenericModal('Error al trasladar: ' + err.message, 'Error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = txtOrig;
+    }
+}
 function toggleCamposPrestamo() {
     const tipo = document.getElementById('tipo-prestamo').value;
-    document.getElementById('campos-interno').style.display = tipo === 'interno' ? 'block' : 'none';
+    document.getElementById('campos-interno').style.display = 'none';
     document.getElementById('campos-garantia').style.display = tipo === 'garantia' ? 'block' : 'none';
     document.getElementById('campos-unidad').style.display = tipo === 'unidad' ? 'block' : 'none';
+    document.getElementById('campos-traslado').style.display = tipo === 'traslado' ? 'block' : 'none';
 }
 
 async function guardarPrestamo() {
@@ -1251,8 +1575,8 @@ async function guardarPrestamo() {
     if (tipo === 'interno') await guardarPrestamoInterno();
     else if (tipo === 'garantia') await guardarPrestamoGarantia();
     else if (tipo === 'unidad') await guardarPrestamoUnidad();
+    else if (tipo === 'traslado') await confirmarTrasladoAlmacen();
 }
-
 async function guardarPrestamoInterno() {
     const personal = document.getElementById('personal-cambio').value.trim();
     const reemplazo = document.getElementById('extintor-reemplazo').value.trim();
@@ -2126,52 +2450,21 @@ async function guardarNuevoExtintor() {
         .eq('N', numeroNuevo)
         .maybeSingle();
 
-    if (existente) {
+        if (existente) {
         if (existente.CONDICION === 'Baja') {
-            const confirmar = await showGenericModal(
-                `El número "${numeroNuevo}" lo ocupa un extintor DADO DE BAJA.\n\n` +
-                `¿Deseas reutilizar ese número para el nuevo? El extintor viejo se ` +
-                `renombrará a "${numeroNuevo}-BAJA-<fecha>" para conservar su historial.`,
-                'Reutilizar número',
-                'Sí, reutilizar',
-                'No, cancelar'
-            );
-            if (!confirmar) return;
-
+            // Renombrado silencioso sin preguntar
             const sufijo = `-BAJA-${new Date().toISOString().slice(0, 10)}`;
             const nombreViejo = `${numeroNuevo}${sufijo}`;
 
-            const { error: renombrarErr } = await supabaseClient
-                .from(TABLA_EXTINTORES)
-                .update({ N: nombreViejo })
-                .eq('N', numeroNuevo);
-
-            if (renombrarErr) {
-                console.error('Error renombrando extintor viejo:', renombrarErr);
-                await showGenericModal(
-                    'No se pudo liberar el número: ' + renombrarErr.message,
-                    'Error'
-                );
-                return;
-            }
-
+            await supabaseClient.from(TABLA_EXTINTORES).update({ N: nombreViejo }).eq('N', numeroNuevo);
             await Promise.all([
-                supabaseClient
-                    .from(TABLA_MOVIMIENTOS)
-                    .update({ n_extintor: nombreViejo })
-                    .eq('n_extintor', numeroNuevo),
-                supabaseClient
-                    .from(TABLA_OBSERVACIONES)
-                    .update({ n_extintor: nombreViejo })
-                    .eq('n_extintor', numeroNuevo)
+                supabaseClient.from(TABLA_MOVIMIENTOS).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo),
+                supabaseClient.from(TABLA_OBSERVACIONES).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo)
             ]);
 
             if (extintorBajaOrigen) {
                 extintorBajaOrigen.N = nombreViejo;
             }
-
-            console.log(`🔓 Número "${numeroNuevo}" liberado. El extintor viejo ahora es "${nombreViejo}".`);
-
         } else {
             await showGenericModal(
                 `El número "${numeroNuevo}" ya está ocupado por un extintor activo ` +
@@ -2278,134 +2571,144 @@ async function guardarNuevoExtintor() {
         saveBtn.innerHTML = textoOriginal;
     }
 }
-function abrirBaja() {
+async function abrirBaja() {
     if (!isAdmin || currentItemIndex === null) return;
     const item = misDatos[currentItemIndex];
-    document.getElementById('baja-numero').value = item["N"];
-    document.getElementById('baja-motivo').value = '';
-    document.getElementById('baja-archivo').value = '';
-    document.getElementById('baja-preview').style.display = 'none';
-    document.getElementById('baja-preview').innerHTML = '';
-    document.getElementById('baja-file-name').textContent = '';
-    bajaArchivo = null;
-    document.getElementById('baja-modal').classList.add('active');
     closeEditorModal();
-}
-function closeBajaModal() { document.getElementById('baja-modal').classList.remove('active'); bajaArchivo = null; }
 
-function previewEvidenciaBaja(input) {
-    const file = input.files[0];
-    if (!file) return;
-    bajaArchivo = file;
-    const preview = document.getElementById('baja-preview');
-    const fileName = document.getElementById('baja-file-name');
-    fileName.textContent = `Archivo seleccionado: ${file.name}`;
+    const confirmar = await showGenericModal(
+        `¿Seguro que deseas descartar el extintor N° ${item["N"]}? Desaparecerá de la tabla principal.`,
+        'Confirmar Descarte',
+        'Sí, descartar',
+        'Cancelar'
+    );
 
-    if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Vista previa">`;
-            preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-
-    } else if (file.type === 'application/pdf') {
-        const url = URL.createObjectURL(file);
-        preview.innerHTML = `<iframe src="${url}" style="width:100%; height:420px; border:none; border-radius:8px;"></iframe>`;
-        preview.style.display = 'block';
-
-    } else {
-        preview.innerHTML = `<p style="color:#475569;">📄 ${file.name}</p>`;
-        preview.style.display = 'block';
-    }
-}
-
-async function confirmarBaja() {
-    if (!isAdmin || currentItemIndex === null) return;
-
-    const item = misDatos[currentItemIndex];
-    const no = String(item["N"]);
-    const motivo = document.getElementById('baja-motivo').value.trim() || 'Sin motivo especificado';
-    const archivo = bajaArchivo;
-    let evidenciaUrl = null;
-
-    const confirmBtn = document.querySelector('#baja-modal .btn-danger');
-    const textoOriginal = confirmBtn.innerHTML;
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando…';
-
-    try {
-        if (archivo) {
-            const fileExt = (archivo.name.split('.').pop() || 'bin').toLowerCase();
-            const fileName = `baja_${no}_${Date.now()}.${fileExt}`;
-
-            const { error: uploadErr } = await supabaseClient
-                .storage
-                .from(BUCKET_NAME)
-                .upload(`bajas/${fileName}`, archivo, {
-                    cacheControl: '3600',
-                    upsert: false,
-                    contentType: archivo.type
-                });
-
-            if (uploadErr) throw new Error('Error al subir la evidencia: ' + uploadErr.message);
-
-            const { data: urlData } = supabaseClient
-                .storage
-                .from(BUCKET_NAME)
-                .getPublicUrl(`bajas/${fileName}`);
-
-            evidenciaUrl = urlData?.publicUrl || null;
-        }
-
+    if (confirmar) {
+        const no = String(item["N"]);
         const updateData = {
             CONDICION: 'Baja',
             ESTADO: 'No Disponible',
             ubicacion_prestamo: null,
-            observaciones: (item["observaciones"] || '') +
-                `\n[Baja] ${motivo}${evidenciaUrl ? ' - Evidencia: ' + evidenciaUrl : ''}`,
-            evidencia: evidenciaUrl || ''
+            observaciones: (item["observaciones"] || '') + `\n[Descartado ${new Date().toLocaleDateString('es-ES')}]`
         };
 
-        const detalleMov = `Baja - Motivo: ${motivo}${evidenciaUrl ? ' - Evidencia: ' + evidenciaUrl : ''}`;
+        try {
+            const { error } = await supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no);
+            if (error) throw error;
 
-        const [updateRes, insertRes] = await Promise.all([
-            supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no),
-            supabaseClient.from(TABLA_MOVIMIENTOS)
-                .insert({ n_extintor: no, tipo: 'baja', personal: 'Sistema', detalle: detalleMov, activo: false })
-                .select()
-                .single()
-        ]);
+            const idx = misDatos.findIndex(x => String(x.N) === no);
+            if (idx !== -1) misDatos[idx] = { ...misDatos[idx], ...updateData };
 
-        if (updateRes.error) throw new Error('Error al dar de baja: ' + updateRes.error.message);
-        if (insertRes.error) throw new Error('Error al registrar movimiento: ' + insertRes.error.message);
-
-        const idx = misDatos.findIndex(x => String(x.N) === no);
-        if (idx !== -1) misDatos[idx] = { ...misDatos[idx], ...updateData };
-
-        historialCompleto.unshift({
-            id: insertRes.data?.id,
-            fecha: new Date().toLocaleString('es-ES'),
-            no: no,
-            tipo: 'Baja',
-            personal: 'Sistema',
-            detalle: detalleMov
-        });
-
-        closeBajaModal();
-        applyFilters();
-
-        await showGenericModal('Extintor dado de baja correctamente.', 'Éxito');
-
-    } catch (err) {
-        console.error(err);
-        await showGenericModal(err.message || 'Error inesperado.', 'Error');
-    } finally {
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = textoOriginal;
+            applyFilters(); 
+            await showGenericModal('Extintor descartado. Sube el certificado en "Extintores descartados".', 'Éxito');
+        } catch (err) {
+            console.error(err);
+            await showGenericModal('Error al descartar: ' + err.message, 'Error');
+        }
     }
 }
 
+let descartadoIndex = null;
+
+function verDescartados() {
+    if (!isAdmin) return; // Protección extra
+
+    const descartados = misDatos.filter(item => item["CONDICION"] === 'Baja');
+    const body = document.getElementById('descartados-body');
+    body.innerHTML = '';
+    
+    if (descartados.length === 0) {
+        body.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No hay extintores descartados.</td></tr>`;
+    } else {
+        descartados.forEach(item => {
+            const idx = misDatos.indexOf(item);
+            const tieneEvidencia = item["evidencia"] && item["evidencia"].trim() !== "";
+            const linkEvidencia = tieneEvidencia ? `<a href="${item["evidencia"]}" target="_blank" style="color:#3b82f6;text-decoration:underline;">Ver Certificado</a>` : `<span style="color:#ef4444; font-size:0.85rem;">Falta subir</span>`;
+            
+            // Limpiamos el texto: quitamos las URLs y cortamos si es muy largo
+            let obs = item["observaciones"] || '-';
+            obs = obs.replace(/https?:\/\/[^\s]+/g, '').replace(/Evidencia:/gi, '').trim();
+            if (obs.length > 80) obs = obs.substring(0, 80) + '...';
+            
+            body.innerHTML += `
+                <tr>
+                    <td><strong>${item["N"]}</strong></td>
+                    <td>${item["AREA RESPONSABLE"] || '-'}</td>
+                    <td>${obs}</td>
+                    <td>${linkEvidencia}</td>
+                    <td>
+                        <button class="btn btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="abrirEditarDescartado(${idx})"><i class="fas fa-edit"></i> Editar</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    document.getElementById('descartados-modal').classList.add('active');
+}
+
+function closeDescartadosModal() { document.getElementById('descartados-modal').classList.remove('active'); }
+
+function abrirEditarDescartado(index) {
+    descartadoIndex = index;
+    const item = misDatos[index];
+    document.getElementById('descarte-numero').value = item["N"];
+    document.getElementById('descarte-motivo').value = item["observaciones"] || '';
+    document.getElementById('descarte-archivo').value = '';
+    document.getElementById('descarte-file-name').textContent = item["evidencia"] ? 'Ya tiene un certificado (se reemplazará si subes uno nuevo).' : 'No hay certificado subido.';
+    document.getElementById('editar-descartado-modal').classList.add('active');
+}
+
+function closeEditarDescartadoModal() {
+    document.getElementById('editar-descartado-modal').classList.remove('active');
+    descartadoIndex = null;
+}
+
+async function guardarEditarDescartado() {
+    if (descartadoIndex === null) return;
+    const item = misDatos[descartadoIndex];
+    const no = String(item["N"]);
+    const motivo = document.getElementById('descarte-motivo').value.trim();
+    const archivo = document.getElementById('descarte-archivo').files[0];
+    
+    const btn = document.querySelector('#editar-descartado-modal .btn-primary');
+    const txtOrig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    
+    try {
+        let evidenciaUrl = item["evidencia"] || null;
+        
+        if (archivo) {
+            const fileExt = (archivo.name.split('.').pop() || 'bin').toLowerCase();
+            const fileName = `baja_${no}_${Date.now()}.${fileExt}`;
+            const { error: uploadErr } = await supabaseClient.storage.from(BUCKET_NAME).upload(`bajas/${fileName}`, archivo, { cacheControl: '3600', upsert: false, contentType: archivo.type });
+            if (uploadErr) throw uploadErr;
+            const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`bajas/${fileName}`);
+            evidenciaUrl = urlData?.publicUrl || null;
+        }
+        
+        const updateData = {
+            observaciones: motivo,
+            evidencia: evidenciaUrl || ''
+        };
+        
+        const { error } = await supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no);
+        if (error) throw error;
+        
+        misDatos[descartadoIndex] = { ...misDatos[descartadoIndex], ...updateData };
+        
+        closeEditarDescartadoModal();
+        verDescartados();
+        await showGenericModal('Datos actualizados correctamente.', 'Éxito');
+        
+    } catch (err) {
+        console.error(err);
+        await showGenericModal('Error al guardar: ' + err.message, 'Error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = txtOrig;
+    }
+}
 function abrirNuevoReemplazo() {
     if (!isAdmin || currentItemIndex === null) return;
     const item = misDatos[currentItemIndex];
@@ -2454,52 +2757,21 @@ async function confirmarNuevoReemplazo() {
         .eq('N', numeroNuevo)
         .maybeSingle();
 
-    if (existente) {
+        if (existente) {
         if (existente.CONDICION === 'Baja') {
-            const confirmar = await showGenericModal(
-                `El número "${numeroNuevo}" lo ocupa un extintor DADO DE BAJA.\n\n` +
-                `¿Deseas reutilizar ese número para el nuevo? El extintor viejo se ` +
-                `renombrará a "${numeroNuevo}-BAJA" para conservar su historial.`,
-                'Reutilizar número',
-                'Sí, reutilizar',
-                'No, cancelar'
-            );
-            if (!confirmar) return;
-
+            // Renombrado silencioso sin preguntar
             const sufijo = `-BAJA-${new Date().toISOString().slice(0, 10)}`;
             const nombreViejo = `${numeroNuevo}${sufijo}`;
 
-            const { error: renombrarErr } = await supabaseClient
-                .from(TABLA_EXTINTORES)
-                .update({ N: nombreViejo })
-                .eq('N', numeroNuevo);
-
-            if (renombrarErr) {
-                console.error('Error renombrando extintor viejo:', renombrarErr);
-                await showGenericModal(
-                    'No se pudo liberar el número: ' + renombrarErr.message,
-                    'Error'
-                );
-                return;
-            }
-
+            await supabaseClient.from(TABLA_EXTINTORES).update({ N: nombreViejo }).eq('N', numeroNuevo);
             await Promise.all([
-                supabaseClient
-                    .from(TABLA_MOVIMIENTOS)
-                    .update({ n_extintor: nombreViejo })
-                    .eq('n_extintor', numeroNuevo),
-                supabaseClient
-                    .from(TABLA_OBSERVACIONES)
-                    .update({ n_extintor: nombreViejo })
-                    .eq('n_extintor', numeroNuevo)
+                supabaseClient.from(TABLA_MOVIMIENTOS).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo),
+                supabaseClient.from(TABLA_OBSERVACIONES).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo)
             ]);
 
             if (extintorBajaOrigen) {
                 extintorBajaOrigen.N = nombreViejo;
             }
-
-            console.log(`🔓 Número "${numeroNuevo}" liberado. El extintor viejo ahora es "${nombreViejo}".`);
-
         } else {
             await showGenericModal(
                 `El número "${numeroNuevo}" ya está ocupado por un extintor activo ` +
@@ -2687,14 +2959,73 @@ async function cargarDatosSecundarios() {
     });
 }
 
-async function refreshData() {
-    const { data, error } = await supabaseClient.from(TABLA_EXTINTORES).select('*');
-    if (error) { console.error(error); return; }
-    if (data) misDatos = [...data].sort(compararNumeros);
+async function refreshdata() {
+    try {
+        // 1. Cargar Extintores
+        const { data: extintores, error: errExtintores } = await supabaseClient
+            .from(TABLA_EXTINTORES)
+            .select('*');
+        
+        if (errExtintores) throw errExtintores;
+        misDatos = extintores || [];
+
+        // 2. Cargar Movimientos (Historial y Activos)
+        const { data: movimientos, error: errMovs } = await supabaseClient
+            .from(TABLA_MOVIMIENTOS)
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (errMovs) throw errMovs;
+        
+        // Formatear historial completo
+        historialCompleto = (movimientos || []).map(mov => ({
+            id: mov.id,
+            fecha: new Date(mov.created_at).toLocaleString('es-ES'),
+            no: mov.n_extintor,
+            tipo: mov.tipo,
+            personal: mov.personal || 'Sistema',
+            detalle: mov.detalle || ''
+        }));
+
+        // Cargar movimientos activos (esta función ya la tienes en tu código)
+        await cargarMovimientosActivos();
+
+        // 3. Cargar Observaciones
+        const { data: observaciones, error: errObs } = await supabaseClient
+            .from(TABLA_OBSERVACIONES)
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (errObs) throw errObs;
+        
+        observacionesPublicas = (observaciones || []).map(o => ({
+            id: o.id,
+            no: o.n_extintor,
+            texto: o.texto,
+            fecha: new Date(o.created_at).toLocaleDateString('es-ES')
+        }));
+
+        // 4. ACTUALIZAR FILTROS DINÁMICOS (TIPO Y CAPACIDAD)
+        actualizarFiltrosDesdeDB(); // <--- AQUÍ SE LLENA EL SELECT DE TIPOS Y CAPACIDADES
+
+        // 5. Inicializar autocompletados y renderizar la tabla
+        if (typeof inicializarAutocompletes === 'function') {
+            inicializarAutocompletes();
+        }
+        poblarResponsables();
+                // ... (esto continúa justo después de: poblarResponsables(); )
+        applyFilters();
+
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+        if (typeof showGenericModal === 'function') {
+            await showGenericModal('Error al cargar los datos: ' + error.message, 'Error');
+        }
+    }
 }
 
 // ============================================================
-//  INICIO
+//  INICIO DE LA APP
 // ============================================================
 async function iniciarApp() {
     const [extRes, movRes, obsRes, histRes] = await Promise.all([
@@ -2714,12 +3045,7 @@ async function iniciarApp() {
     const error = extRes.error;
 
     if (error) {
-        tableBody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}" style="text-align:center; color:#ef4444;">Error de Supabase: ${error.message}</td></tr>`;
-        return;
-    }
-
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}" style="text-align:center; color:#94a3b8;">La tabla de Supabase está vacía o no tiene registros</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${isAdmin ? 9 : 4}" style="text-align:center; color:#ef4444;">Error de Supabase: ${error.message}</td></tr>`;
         return;
     }
 
@@ -2768,23 +3094,25 @@ async function iniciarApp() {
         personal: mov.personal || '-',
         detalle: mov.detalle || ''
     }));
-
+    
+    actualizarFiltrosDesdeDB(); 
     poblarResponsables();
     inicializarAutocompletes();
     renderCalendar();
     applyFilters();
 }
 
-// Eventos para cerrar modales con clic fuera
+// ============================================================
+// EVENTOS PARA CERRAR MODALES AL HACER CLIC FUERA
+// ============================================================
 detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeModal(); });
 loanModal.addEventListener('click', (e) => { if (e.target === loanModal) closeLoanModal(); });
 historyModal.addEventListener('click', (e) => { if (e.target === historyModal) closeHistoryModal(); });
 observationsModal.addEventListener('click', (e) => { if (e.target === observationsModal) closeObservationsModal(); });
 observationFormModal.addEventListener('click', (e) => { if (e.target === observationFormModal) closeObservationFormModal(); });
 editorModal.addEventListener('click', (e) => { if (e.target === editorModal) closeEditorModal(); });
-document.getElementById('baja-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeBajaModal(); });
 document.getElementById('nuevo-reemplazo-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeNuevoReemplazoModal(); });
 document.getElementById('garantias-pendientes-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeGarantiasPendientesModal(); });
-condicionFilter.addEventListener('change', applyFilters);
-if (numeroFilter) numeroFilter.addEventListener('input', applyFilters);
+
+// Arrancar la aplicación
 iniciarApp();

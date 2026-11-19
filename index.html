@@ -16,94 +16,181 @@
 </head>
 <body>
 
-<header class="header-container">
-    <!-- Menú hamburguesa -->
-    <button class="menu-btn" id="menuBtn" aria-label="Menú">
-        <i class="fas fa-bars"></i>
-    </button>
-    <div class="menu-dropdown" id="menuDropdown">
-        <button class="menu-item" id="menuObservaciones" onclick="verObservacionesGenerales(); cerrarMenu();">
-            <i class="fas fa-clipboard-list"></i> Observaciones
-        </button>
-
-        <button class="menu-item" id="menuHistorial" onclick="verHistorial(); cerrarMenu();">
-            <i class="fas fa-history"></i> Historial
-        </button>
-
-        <button class="menu-item" id="menuExportar" onclick="exportarExcel(); cerrarMenu();">
-            <i class="fas fa-file-excel"></i> Exportar
-        </button>
-
-        <!-- AGREGAR EXTINTOR - SOLO ADMIN -->
-        <button class="menu-item" id="menuAgregarExtintor"
-                onclick="abrirAgregarExtintor(); cerrarMenu();"
-                style="display:none;">
-            <i class="fas fa-plus-circle" style="color:#16a34a;"></i>
-            Agregar extintor
-        </button>
-
-        <button class="menu-item" id="menuAdminBtn" onclick="activarAdmin(); cerrarMenu();">
-            <i class="fas fa-lock"></i>
-            <span id="menuAdminText">Modo Administrador</span>
-            <span class="badge-admin" id="menuAdminBadge" style="display:none;">ACTIVO</span>
-        </button>
+<header class="header-container" style="background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: none; border-radius: 0;">
+    
+    <!-- Logo e Identidad -->
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="assets/2022-04-05T18-24-22-534ZNUEVO_LOGOTIPO_AIP_2020.png" alt="Logo AIP" style="height: 40px; filter: none;">
+        <h2 style="color: #0f172a; font-size: 1.2rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-fire-extinguisher" style="color: #16a34a;"></i> Gestión de Extintores
+        </h2>
     </div>
 
-    <div class="header-left">
-        <img src="assets/2022-04-05T18-24-22-534ZNUEVO_LOGOTIPO_AIP_2020.png" alt="Logo AIP" class="logo-empresa">
-        <h2><i class="fas fa-fire-extinguisher"></i> Gestión de Extintores</h2>
+    <!-- Acciones de Usuario -->
+    <div style="display: flex; align-items: center; gap: 16px;">
+        
+        <!-- Botones secundarios (Ocultos para público) -->
+        <button class="btn btn-secondary" id="btnObservaciones" onclick="verObservacionesGenerales();" style="display: none; background: transparent; border: none; color: #64748b;">
+            <i class="fas fa-clipboard-list"></i> Observaciones
+        </button>
+        
+        <button class="btn btn-secondary" id="btnHistorial" onclick="verHistorial();" style="display: none; background: transparent; border: none; color: #64748b;">
+            <i class="fas fa-history"></i> Historial
+        </button>
+        <!-- Botón de Login -->
+        <button class="btn btn-primary" id="btnLogin" onclick="activarAdmin();" style="background: #f1f5f9; color: #0f172a; border-radius: 20px; padding: 8px 16px;">
+            <i class="fas fa-user-circle"></i> Ingresar
+        </button>
     </div>
 </header>
 
 <div class="container">
-    <!-- BOTÓN DE FILTROS (solo visible en móvil) -->
-    <button class="filters-toggle" type="button" id="filtersToggle" aria-label="Mostrar filtros">
-        <span><i class="fas fa-filter"></i> Filtros</span>
-        <i class="fas fa-chevron-down chevron-toggle"></i>
-    </button>
-
-    <!-- BARRA DE FILTROS -->
-    <div class="filters-bar" id="filtersBar">
-        <div class="filter-group">
-            <label><i class="fas fa-user"></i> Área Responsable</label>
-            <div class="autocomplete-wrap" id="responsable-autocomplete-wrap">
-                <input id="responsable-filter" type="text" placeholder="Buscar responsable..." autocomplete="off">
-                <button type="button" class="autocomplete-clear" id="responsable-clear" aria-label="Limpiar">
-                    <i class="fas fa-times"></i>
-                </button>
-                <div class="autocomplete-dropdown" id="responsable-dropdown"></div>
-            </div>
+        <!-- Título y Acciones Principales -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1 style="margin: 0; font-size: 1.8rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Inventario de extintores</h1>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 0.95rem;">Control y seguimiento de equipos</p>
         </div>
-        <div class="filter-group">
-            <label><i class="fas fa-hashtag"></i> Nº Extintor</label>
-            <input id="numero-filter" type="search" placeholder="Buscar por número...">
-        </div>
-        <div class="date-filter-wrap">
-            <label><i class="fas fa-calendar-alt"></i> Vencimiento</label>
-            <button id="date-trigger" class="date-trigger" type="button" aria-expanded="false">
-                <span style="display:flex; align-items:center; gap:8px; overflow:hidden;">
-                    <span id="date-label" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Rango de vencimiento</span>
-                </span>
-                <span class="chevron"><i class="fas fa-chevron-down"></i></span>
+        <div style="display: flex; gap: 12px;">
+            <button id="btnAgregarExtintor" class="btn btn-success" onclick="abrirAgregarExtintor()" style="display: none; background: #16a34a; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600;">
+                <i class="fas fa-plus"></i> Agregar extintor
             </button>
-            <div id="calendar-popup" class="calendar-popup" role="dialog">
-                <div class="calendar-header">
-                    <button id="cal-prev" class="calendar-nav" type="button"><i class="fas fa-chevron-left"></i></button>
-                    <strong id="cal-month-label"></strong>
-                    <button id="cal-next" class="calendar-nav" type="button"><i class="fas fa-chevron-right"></i></button>
-                </div>
-                <div class="calendar-weekdays" style="display: none;"></div>
-                <div id="cal-days" class="calendar-days"></div>
-                <div id="cal-status" class="calendar-status">Selecciona la fecha de inicio</div>
-                <div class="calendar-footer">
-                    <button id="cal-clear" class="clear-dates-btn" type="button"><i class="fas fa-times"></i> Limpiar</button>
-                    <button id="cal-apply" class="apply-dates-btn" type="button" disabled>Aplicar</button>
-                </div>
+            <button id="btnExportar" class="btn btn-secondary" onclick="exportarExcel()" style="display: none; background: white; border: 1px solid #cbd5e1; color: #334155; padding: 10px 20px; border-radius: 10px; font-weight: 600;">
+                <i class="fas fa-file-excel"></i> Exportar
+            </button>
+        </div>
+    </div>
+                    <!-- Tarjetas de Resumen (KPIs) -->
+    <div class="kpi-grid">
+        <!-- Tarjeta Total -->
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background: #f0fdf4; color: #16a34a;">
+                <i class="fas fa-fire-extinguisher"></i>
+            </div>
+            <div>
+                <p class="kpi-title">Total registrados</p>
+                <h3 class="kpi-value" id="kpi-total">0</h3>
             </div>
         </div>
-        <div class="filter-group">
-            <label><i class="fas fa-tag"></i> Condición</label>
-            <select id="condicion-filter"></select>
+
+        <!-- Tarjeta Vigentes -->
+        <div class="kpi-card" onclick="filtrarPorKPI('vigente')" style="cursor: pointer;">
+            <div class="kpi-icon" style="background: #f0fdf4; color: #16a34a;">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+                <p class="kpi-title">Vigentes</p>
+                <h3 class="kpi-value" id="kpi-vigentes" style="color: #16a34a;">0</h3>
+            </div>
+        </div>
+        
+        <!-- Tarjeta Por Vencer -->
+        <div class="kpi-card" onclick="filtrarPorKPI('por_vencer')" style="cursor: pointer;">
+            <div class="kpi-icon" style="background: #fffbeb; color: #d97706;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div>
+                <p class="kpi-title">Por vencer</p>
+                <h3 class="kpi-value" id="kpi-por-vencer" style="color: #d97706;">0</h3>
+            </div>
+        </div>
+        
+        <!-- Tarjeta Vencidos -->
+        <div class="kpi-card" onclick="filtrarPorKPI('vencido')" style="cursor: pointer;">
+            <div class="kpi-icon" style="background: #fef2f2; color: #dc2626;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div>
+                <p class="kpi-title">Vencidos</p>
+                <h3 class="kpi-value" id="kpi-vencidos" style="color: #dc2626;">0</h3>
+            </div>
+        </div>
+    </div>
+     <!-- Pestañas de Estado -->
+    <div class="tabs-container" id="main-tabs">
+        <button class="tab-btn active" onclick="cambiarTab('todos', this)">Todos</button>
+        <button class="tab-btn" onclick="cambiarTab('almacen', this)">Almacén SST</button>
+        <button class="tab-btn" onclick="cambiarTab('descartados', this)">Descartados</button>
+    </div>
+
+    <!-- Sub-Pestañas para Almacén SST -->
+    <div id="sub-tabs-almacen" style="display: none; margin-bottom: 16px; gap: 8px;">
+        <button class="btn" id="btn-sub-stock" onclick="cambiarSubTab('stock', this)" style="background: #16a34a; color: white; padding: 8px 16px; border-radius: 8px;">En Stock</button>
+        <button class="btn" id="btn-sub-asignados" onclick="cambiarSubTab('asignados', this)" style="background: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px;">Asignados</button>
+    <!-- NUEVO BOTÓN -->
+        <button class="btn" id="btn-sub-otras" onclick="cambiarSubTab('otras', this)" style="background: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px;">Otras áreas</button>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <div class="filters-container">
+        <div class="filters-header">
+            <h4><i class="fas fa-filter" style="color: #16a34a;"></i> Filtros</h4>
+            <button class="clear-filters-btn" onclick="limpiarFiltros()"><i class="fas fa-times"></i> Limpiar filtros</button>
+        </div>
+                <div class="filters-grid">
+            <!-- Fila 1 -->
+            <div class="filter-group" id="filter-group-area">
+                <label><i class="fas fa-user"></i> Área Responsable</label>
+                <div class="autocomplete-wrap" id="area-autocomplete-wrap">
+                    <input id="area-filter" type="text" placeholder="Buscar área..." autocomplete="off">
+                    <button type="button" class="autocomplete-clear" id="area-clear" aria-label="Limpiar"><i class="fas fa-times"></i></button>
+                    <div class="autocomplete-dropdown" id="area-dropdown"></div>
+                </div>
+            </div>
+            <div class="filter-group" id="filter-group-numero">
+                <label><i class="fas fa-hashtag"></i> N° de extintor</label>
+                <input id="numero-filter" type="search" placeholder="Buscar por número...">
+            </div>
+            <div class="filter-group" id="filter-group-serie">
+                <label><i class="fas fa-barcode"></i> N° de Serie</label>
+                <input id="serie-filter" type="search" placeholder="Buscar por serie...">
+            </div>
+            <div class="filter-group date-filter-wrap" id="filter-group-vencimiento">
+                <label><i class="fas fa-calendar-alt"></i> Vencimiento</label>
+                <button id="date-trigger" class="date-trigger" type="button" aria-expanded="false">
+                    <span style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+                        <span id="date-label" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Rango de vencimiento</span>
+                    </span>
+                    <span class="chevron"><i class="fas fa-chevron-down"></i></span>
+                </button>
+                <!-- El calendario popup se queda igual, asegúrate de no borrarlo -->
+                <div id="calendar-popup" class="calendar-popup" role="dialog">
+                    <div class="calendar-header">
+                        <button id="cal-prev" class="calendar-nav" type="button"><i class="fas fa-chevron-left"></i></button>
+                        <strong id="cal-month-label"></strong>
+                        <button id="cal-next" class="calendar-nav" type="button"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-weekdays" style="display: none;"></div>
+                    <div id="cal-days" class="calendar-days"></div>
+                    <div id="cal-status" class="calendar-status">Selecciona la fecha de inicio</div>
+                    <div class="calendar-footer">
+                        <button id="cal-clear" class="clear-dates-btn" type="button"><i class="fas fa-times"></i> Limpiar</button>
+                        <button id="cal-apply" class="apply-dates-btn" type="button" disabled>Aplicar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtro de Tipo -->
+<div class="filter-group">
+    <label><i class="fas fa-fire"></i> Tipo de extintor</label>
+    <select id="tipo-filter">
+        <option value="">Todos los tipos</option>
+        <!-- Las opciones se llenarán dinámicamente con JS -->
+    </select>
+</div>
+
+<!-- Filtro de Capacidad -->
+<div class="filter-group">
+    <label><i class="fas fa-weight-hanging"></i> Capacidad</label>
+    <select id="capacidad-filter">
+        <option value="">Cualquier capacidad</option>
+        <!-- Las opciones se llenarán dinámicamente con JS -->
+    </select>
+</div>
+             <div class="filter-group" id="filter-group-condicion">
+                <label><i class="fas fa-tag"></i> Condición</label>
+                <select id="condicion-filter"></select>
+            </div>
         </div>
     </div>
 
@@ -128,15 +215,17 @@
 
     <div class="table-wrapper">
         <table>
-            <thead id="table-head">
+                        <thead id="table-head">
                 <tr>
-                    <th>N</th>
-                    <th>Área Responsable</th>
-                    <th>Ubicación asignada</th>
-                    <th>Ubicación actual</th>
-                    <th>Condición</th>
-                    <th id="garantia-header">Garantía</th>
-                    <th id="estado-header" style="display:none;">Estado</th>
+                    <th>N°</th>
+                    <th>TIPO</th>
+                    <th>CAPACIDAD</th>
+                    <th>ÁREA RESPONSABLE</th>
+                    <th>UBICACIÓN ASIGNADA</th>
+                    <th>UBICACIÓN ACTUAL</th>
+                    <th>CONDICIÓN</th>
+                    <th>GARANTÍA</th>
+                    <th id="estado-header" style="display:none;">ESTADO</th>
                 </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -234,34 +323,60 @@
     </div>
 </div>
 
-<!-- Baja -->
-<div id="baja-modal" class="modal">
+<!-- Modal: Lista de Descartados -->
+<div id="descartados-modal" class="modal">
+    <div class="modal-content" style="max-width:900px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-trash-alt" style="color:#ef4444;"></i> Extintores Descartados</h2>
+            <button class="modal-close" onclick="closeDescartadosModal()">&times;</button>
+        </div>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead style="background:#f1f5f9;">
+                    <tr>
+                        <th>N Extintor</th>
+                        <th>Área Original</th>
+                        <th>Motivo / Observación</th>
+                        <th>Certificado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="descartados-body"></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeDescartadosModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Descarte -->
+<div id="editar-descartado-modal" class="modal">
     <div class="modal-content" style="max-width:500px;">
         <div class="modal-header">
-            <h2><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Dar de baja extintor</h2>
-            <button class="modal-close" onclick="closeBajaModal()">&times;</button>
+            <h2><i class="fas fa-edit" style="color:#f59e0b;"></i> Editar Descarte</h2>
+            <button class="modal-close" onclick="closeEditarDescartadoModal()">&times;</button>
         </div>
         <div class="modal-section">
             <div class="form-group">
                 <label>N de extintor:</label>
-                <input type="text" id="baja-numero" readonly style="background:#f1f5f9; font-weight:600;">
+                <input type="text" id="descarte-numero" readonly style="background:#f1f5f9; font-weight:600;">
             </div>
             <div class="form-group">
-                <label for="baja-motivo">Motivo de baja:</label>
-                <textarea id="baja-motivo" rows="2" placeholder="Ej. Daño estructural, vencimiento sin recarga, etc."></textarea>
+                <label for="descarte-motivo">Motivo / Certificado de descarte:</label>
+                <textarea id="descarte-motivo" rows="3" placeholder="Ej. Daño estructural, vencimiento sin recarga..."></textarea>
             </div>
             <div class="form-group">
-                <label>Subir evidencia (imagen o documento):</label>
+                <label>Subir evidencia (imagen o PDF):</label>
                 <div class="file-input-wrapper">
-                    <input type="file" id="baja-archivo" accept="image/*,.pdf,.doc,.docx" onchange="previewEvidenciaBaja(this)">
+                    <input type="file" id="descarte-archivo" accept="image/*,.pdf">
                 </div>
-                <div id="baja-preview" class="evidencia-preview" style="display:none;"></div>
-                <div id="baja-file-name" style="color:#475569; font-size:0.85rem; margin-top:6px;"></div>
+                <div id="descarte-file-name" style="color:#475569; font-size:0.85rem; margin-top:6px;"></div>
             </div>
         </div>
         <div class="modal-actions">
-            <button class="btn btn-danger" onclick="confirmarBaja()"><i class="fas fa-check"></i> Confirmar baja</button>
-            <button class="btn btn-secondary" onclick="closeBajaModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarEditarDescartado()"><i class="fas fa-save"></i> Guardar</button>
+            <button class="btn btn-secondary" onclick="closeEditarDescartadoModal()">Cancelar</button>
         </div>
     </div>
 </div>
@@ -282,28 +397,27 @@
     </div>
 </div>
 
-<!-- Préstamo -->
+<!-- Préstamo / Movimiento -->
 <div id="loan-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-handshake" style="color:#f59e0b;"></i> Registrar Préstamo</h2>
+            <h2><i class="fas fa-handshake" style="color:#f59e0b;"></i> Registrar Movimiento</h2>
             <button class="modal-close" onclick="closeLoanModal()">&times;</button>
         </div>
         <div class="modal-section">
             <div id="tipo-prestamo-wrapper">
                 <div class="form-group">
-                    <label for="tipo-prestamo">Tipo de préstamo:</label>
+                    <label for="tipo-prestamo">Tipo de movimiento:</label>
                     <select id="tipo-prestamo" onchange="toggleCamposPrestamo()">
-                        <option value="interno">Préstamo interno</option>
-                        <option value="garantia">Extintor de garantía</option>
                         <option value="unidad">Préstamo a ubicación/unidad</option>
+                        <option value="garantia">Extintor de garantía</option>
+                        <option value="traslado">Traslado a Almacén</option>
                     </select>
                 </div>
             </div>
-            <div id="tipo-prestamo-fijo" style="display:none;">
-                <p style="font-weight:600; color:#0ea5e9; font-size:1rem;"><i class="fas fa-tools"></i> Extintor de garantía</p>
-            </div>
-            <div id="campos-interno">
+            
+            <div id="campos-interno" style="display: none;">
+                <!-- Campos viejos ocultos permanentemente -->
                 <div class="form-group">
                     <label for="personal-cambio">Personal a cargo del cambio:</label>
                     <input type="text" id="personal-cambio" placeholder="Nombre del personal">
@@ -325,6 +439,7 @@
                     <input type="text" id="proxima-recarga" placeholder="Ej. 03/2028">
                 </div>
             </div>
+
             <div id="campos-garantia" style="display:none;">
                 <div class="form-group">
                     <label for="garantia-personal">Personal a cargo del cambio:</label>
@@ -335,7 +450,8 @@
                     <input type="text" id="garantia-reemplazo" placeholder="Ej. G-001, REC-01, etc.">
                 </div>
             </div>
-            <div id="campos-unidad" style="display:none;">
+
+            <div id="campos-unidad">
                 <div class="form-group">
                     <label for="unidad-area">Área:</label>
                     <div class="autocomplete-wrap" id="unidad-area-autocomplete-wrap">
@@ -353,6 +469,26 @@
                     <input type="text" id="unidad-asignada" placeholder="Escriba la ubicación o unidad">
                 </div>
             </div>
+
+            <div id="campos-traslado" style="display:none;">
+                <div class="form-group">
+                    <label for="traslado-motivo">Motivo del traslado:</label>
+                    <select id="traslado-motivo">
+                        <option value="Usado">Usado</option>
+                        <option value="Despresurizado">Despresurizado</option>
+                        <option value="Dañado">Dañado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="traslado-personal">Personal a cargo:</label>
+                    <input type="text" id="traslado-personal" placeholder="Nombre del personal">
+                </div>
+                <div class="form-group">
+                    <label for="traslado-proxima-recarga">Próxima recarga (Opcional - MM/AAAA):</label>
+                    <input type="text" id="traslado-proxima-recarga" placeholder="Ej. 03/2028">
+                </div>
+            </div>
+
         </div>
         <div class="modal-actions">
             <button class="btn btn-primary" onclick="guardarPrestamo()"><i class="fas fa-check"></i> Guardar</button>
@@ -360,7 +496,6 @@
         </div>
     </div>
 </div>
-
 <!-- Historial -->
 <div id="history-modal" class="modal">
     <div class="modal-content" style="max-width:900px;">

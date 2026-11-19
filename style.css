@@ -1645,12 +1645,14 @@ tbody td:first-child strong {
         font-size: .9rem;
         border: none;
     }
-    .table-wrapper tbody td:nth-child(2)::before { content: "Área responsable"; }
-    .table-wrapper tbody td:nth-child(3)::before { content: "Ubic. asignada"; }
-    .table-wrapper tbody td:nth-child(4)::before { content: "Ubic. actual"; }
-    .table-wrapper tbody td:nth-child(5)::before { content: "Condición"; }
-    .table-wrapper tbody td:nth-child(6)::before { content: "Garantía"; }
-    .table-wrapper tbody td:nth-child(7)::before { content: "Estado"; }
+        .table-wrapper tbody td:nth-child(2)::before { content: "Tipo"; }
+    .table-wrapper tbody td:nth-child(3)::before { content: "Capacidad"; }
+    .table-wrapper tbody td:nth-child(4)::before { content: "Área Responsable"; }
+    .table-wrapper tbody td:nth-child(4)::before { content: "Ubic. asignada"; }
+    .table-wrapper tbody td:nth-child(5)::before { content: "Ubic. actual"; }
+    .table-wrapper tbody td:nth-child(6)::before { content: "Condición"; }
+    .table-wrapper tbody td:nth-child(7)::before { content: "Garantía"; }
+    .table-wrapper tbody td:nth-child(8)::before { content: "Estado"; }
 
     .table-wrapper tbody td:not(:first-child)::before {
         font-size: .72rem;
@@ -1809,4 +1811,204 @@ tbody td:first-child strong {
     background: #dcfce7;
     color: #15803d;
     border-color: transparent;
+}
+/* ===== TARJETAS KPI ===== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.kpi-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+.kpi-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.kpi-value {
+    margin: 4px 0 0 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+}
+/* ===== PESTAÑAS (TABS) ===== */
+.tabs-container {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 24px;
+    gap: 24px;
+    overflow-x: auto;
+}
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.tab-btn:hover {
+    color: #16a34a;
+}
+.tab-btn.active {
+    color: #16a34a;
+    border-bottom-color: #16a34a;
+}
+
+/* ===== NUEVO DISEÑO DE FILTROS ===== */
+.filters-container {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.filters-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.clear-filters-btn {
+    background: none;
+    border: none;
+    color: #16a34a;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.clear-filters-btn:hover {
+    text-decoration: underline;
+}
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+/* ============================================================ */
+/*  REDISEÑO FINAL (DASHBOARD LIMPIO)                           */
+/* ============================================================ */
+
+body {
+    background-color: #f8fafc; /* Fondo gris muy claro de la imagen */
+}
+
+/* Contenedor de la Tabla */
+.table-wrapper {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow-x: auto;
+    margin-top: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #ffffff; /* Encabezados blancos */
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    white-space: nowrap;
+}
+
+td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+    background-color: #f8fafc;
+    cursor: pointer;
+}
+
+/* Estilo para la primera columna (N°) */
+tbody td:first-child strong {
+    color: #0f172a;
+    font-size: 0.95rem;
+}
+
+/* Badges (Píldoras de estado) */
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+}
+
+/* Ajuste para que la tabla no tenga bordes redondos feos por dentro */
+.table-wrapper table {
+    border-style: hidden;
+    border-radius: 12px;
+}
+.table-wrapper table th:first-child { border-top-left-radius: 12px; }
+.table-wrapper table th:last-child { border-top-right-radius: 12px; }
+
+/* Contador de extintores */
+.counter {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 12px;
+    padding: 0;
+}
+
+/* Ocultar el botón de filtros viejo de móvil si quedó por ahí */
+.filters-toggle {
+    display: none !important;
 }
