@@ -612,10 +612,27 @@ function isItemExpired(item) {
 // ============================================================
 function getCondicionItem(item) {
     const estado = item["ESTADO"] || "";
-    const condicion = item["CONDICION"] || "";
-    if (estado === "Almacén SST") return isAdmin ? (condicion || "Usado") : "Mantenimiento";
+    const condicion = String(item["CONDICION"] || "").trim();
+    
+    // Si está dado de baja, se queda como Baja
     if (condicion === "Baja") return "Baja";
-    return isItemExpired(item) ? "Vencido" : "Vigente";
+
+    // Evaluamos si está vencido por fecha o si su condición es "mala"
+    const esVencidoFecha = isItemExpired(item);
+    const esCondicionMala = ['Usado', 'Dañado', 'Despresurizado'].includes(condicion);
+
+    // Si es vencido o tiene condición mala, siempre se mostrará como Vencido
+    if (esVencidoFecha || esCondicionMala) {
+        return "Vencido";
+    }
+
+    // Lógica para el Almacén
+    if (estado === "Almacén SST") {
+        return isAdmin ? (condicion || "En Almacén") : "Mantenimiento";
+    }
+
+    // Si no está vencido ni es condición mala, es Vigente
+    return "Vigente";
 }
 function getEstadoItem(item) {
     if (!isAdmin) return "-";
