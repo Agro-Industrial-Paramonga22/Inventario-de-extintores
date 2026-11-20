@@ -1,31 +1,34 @@
-// ═══════════════════════════════════════════════════════════
+// ============================================================
 //  FILTROS COLAPSABLES EN MÓVIL
-// ═══════════════════════════════════════════════════════════
+// ============================================================
 (function initMobileFilters() {
-    const filtersBar = document.getElementById('filtersBar');
+    const filtersContainer = document.querySelector('.filters-container');
     const toggle = document.getElementById('filtersToggle');
-    if (!filtersBar || !toggle) return;
+    if (!filtersContainer || !toggle) return;
 
     const isMobile = () => window.innerWidth <= 640;
 
-    function syncOnLoad() {
-        if (isMobile() && !filtersBar.dataset.initialized) {
-            filtersBar.classList.add('collapsed');
-            filtersBar.dataset.initialized = 'true';
-        }
-        if (!isMobile()) {
-            filtersBar.classList.remove('collapsed');
-            toggle.classList.remove('open');
+    function syncOnResize() {
+        if (isMobile()) {
+            // En móvil: colapsamos por defecto al cargar (si no se ha tocado el botón)
+            if (!filtersContainer.dataset.userToggled) {
+                filtersContainer.classList.add('collapsed');
+            }
+        } else {
+            // En escritorio: siempre visible y reseteamos la preferencia
+            filtersContainer.classList.remove('collapsed');
+            delete filtersContainer.dataset.userToggled;
         }
     }
 
     toggle.addEventListener('click', () => {
-        filtersBar.classList.toggle('collapsed');
-        toggle.classList.toggle('open');
+        filtersContainer.classList.toggle('collapsed');
+        // Guardamos que el usuario ya interactuó con el botón en esta sesión
+        filtersContainer.dataset.userToggled = 'true';
     });
 
-    window.addEventListener('resize', syncOnLoad);
-    syncOnLoad();
+    window.addEventListener('resize', syncOnResize);
+    syncOnResize(); // Ejecutar al cargar la página
 })();
 
 // ============================================================
@@ -52,7 +55,7 @@ if (condicionFilter) {
         applyFilters();
     });
 }
-const responsableFilter = document.getElementById('responsable-filter');
+
 const tableBody = document.getElementById('table-body');
 const detailModal = document.getElementById('detail-modal');
 const loanModal = document.getElementById('loan-modal');
@@ -100,11 +103,42 @@ function limpiarFiltros() {
 function cambiarTab(tab, element) {
     currentTab = tab;
     globalCondicionFilter = '';
-    
-    // Añadir estas líneas para resetear el select
+
+    // Resetear select de condición
     const selectCond = document.getElementById('condicion-filter');
     if (selectCond) selectCond.value = '';
 
+    // Resetear inputs de filtros (se ocultan al cambiar de pestaña,
+    // pero su .value persiste y applyFilters() lo sigue leyendo)
+    const areaInput = document.getElementById('area-filter');
+    if (areaInput) areaInput.value = '';
+    const areaClear = document.getElementById('area-clear');
+    if (areaClear) areaClear.style.display = 'none';
+
+    const numeroInput = document.getElementById('numero-filter');
+    if (numeroInput) numeroInput.value = '';
+
+    const serieInput = document.getElementById('serie-filter');
+    if (serieInput) serieInput.value = '';
+
+    const tipoInput = document.getElementById('tipo-filter');
+    if (tipoInput) tipoInput.value = '';
+
+    const capInput = document.getElementById('capacidad-filter');
+    if (capInput) capInput.value = '';
+
+    // Resetear rango de fechas del calendario
+    calRangeStart = null;
+    calRangeEnd = null;
+    calPendingDesde = '';
+    calPendingHasta = '';
+    const calStatusEl = document.getElementById('cal-status');
+    if (calStatusEl) calStatusEl.textContent = 'Selecciona la fecha de inicio';
+    const calApplyEl = document.getElementById('cal-apply');
+    if (calApplyEl) calApplyEl.disabled = true;
+    updateDateLabel();
+
+    // Marcar pestaña activa
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     if (element) element.classList.add('active');
 
@@ -695,8 +729,6 @@ const calMonthLabel = document.getElementById('cal-month-label');
 const calStatus = document.getElementById('cal-status');
 const calClearBtn = document.getElementById('cal-clear');
 const calApplyBtn = document.getElementById('cal-apply');
-const monthFormatter = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' });
-const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function toIsoMonth(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 
@@ -977,6 +1009,21 @@ function inicializarAutocompletes() {
     if (serieFilter) {
         serieFilter.addEventListener('input', () => applyFilters());
     }
+
+    // Autocomplete del formulario de préstamo (campo Área destino)
+    const unidadAreaInput = document.getElementById('unidad-area');
+    const unidadAreaDropdown = document.getElementById('unidad-area-dropdown');
+    const unidadAreaClear = document.getElementById('unidad-area-clear');
+    if (unidadAreaInput && unidadAreaDropdown) {
+        unidadAreaAutocomplete = crearAutocomplete({
+            input: unidadAreaInput,
+            dropdown: unidadAreaDropdown,
+            clearBtn: unidadAreaClear,
+            getOptions: obtenerAreasResponsables,
+            onSelect: () => {},
+            onInput: () => {}
+        });
+    }
 }
 function updateCounter(mostrados, total) {
     counterDisplay.innerHTML = `Mostrando <strong>${mostrados}</strong> de <strong>${total}</strong> extintores`;
@@ -1066,7 +1113,19 @@ function applyFilters() {
         }
 
         // --- FILTROS DE TEXTO ---
-        if (areaVal && !(item["AREA RESPONSABLE"] || "").toLowerCase().includes(areaVal)) return false;
+                // --- FILTRO DE ÁREA (incluye préstamos hacia esa área) ---
+        if (areaVal) {
+            const areaOriginal = (item["AREA RESPONSABLE"] || "").toLowerCase();
+            const noItem = String(item["N"]);
+            const prestamoActivo = movimientosPrestamoActivos[noItem];
+            const areaDestino = prestamoActivo
+                ? ((prestamoActivo.responsable_destino || "") + " " + (prestamoActivo.ubicacion_destino || "")).toLowerCase()
+                : "";
+
+            if (!areaOriginal.includes(areaVal) && !areaDestino.includes(areaVal)) {
+                return false;
+            }
+        }
         if (numeroVal && !String(item["N"] || "").toLowerCase().includes(numeroVal)) return false;
         if (serieVal && !(item["N SERIE ACTUAL"] || "").toLowerCase().includes(serieVal)) return false;
         
@@ -1484,6 +1543,7 @@ function openLoanForm(itemIndex) {
     document.getElementById('unidad-area').value = '';
     document.getElementById('unidad-responsable').value = '';
     document.getElementById('unidad-asignada').value = '';
+    document.getElementById('unidad-reemplazo').value = '';
     
     document.getElementById('traslado-motivo').value = 'Usado';
     document.getElementById('traslado-personal').value = '';
@@ -1681,7 +1741,9 @@ async function guardarPrestamoInterno() {
         })
         .eq('N', noB);
 
-    await supabaseClient.from(TABLA_MOVIMIENTOS).insert([
+    const { data: movimientosInsertados, error: movInsertError } = await supabaseClient
+    .from(TABLA_MOVIMIENTOS)
+    .insert([
         {
             n_extintor: noA,
             tipo: 'prestamo_interno',
@@ -1704,7 +1766,14 @@ async function guardarPrestamoInterno() {
             detalle: `Extintor ${noB} (STOCK) enviado a ${responsableOriginalA} - Reemplaza a ${noA}`,
             activo: true
         }
-    ]);
+    ])
+    .select();
+
+if (movInsertError) {
+    console.error('Error insertando movimientos:', movInsertError);
+    await showGenericModal('Error al registrar el préstamo: ' + movInsertError.message, 'Error');
+    return;
+}
 
     await supabaseClient
         .from(TABLA_EXTINTORES)
@@ -1717,10 +1786,26 @@ async function guardarPrestamoInterno() {
     await actualizarUnExtintor(noB);
     await cargarMovimientosActivos();
 
+    if (movimientosInsertados && movimientosInsertados.length === 2) {
     historialCompleto.push(
-        { fecha: new Date().toLocaleString('es-ES'), no: noA, tipo: 'Préstamo Interno (Salida)', personal: personal, detalle: `Extintor ${noA} reportado como ${motivo} - Vencía: ${fechaOriginal} → Próxima recarga: ${proximaRecarga} - Reemplazado por ${noB}` },
-        { fecha: new Date().toLocaleString('es-ES'), no: noB, tipo: 'Préstamo Interno (Entrada)', personal: personal, detalle: `Extintor ${noB} (STOCK) enviado a ${responsableOriginalA} - Reemplaza a ${noA}` }
+        {
+            id: movimientosInsertados[0].id,
+            fecha: new Date().toLocaleString('es-ES'),
+            no: noA,
+            tipo: 'Préstamo Interno (Salida)',
+            personal: personal,
+            detalle: `Extintor ${noA} reportado como ${motivo} - Vencía: ${fechaOriginal} → Próxima recarga: ${proximaRecarga} - Reemplazado por ${noB}`
+        },
+        {
+            id: movimientosInsertados[1].id,
+            fecha: new Date().toLocaleString('es-ES'),
+            no: noB,
+            tipo: 'Préstamo Interno (Entrada)',
+            personal: personal,
+            detalle: `Extintor ${noB} (STOCK) enviado a ${responsableOriginalA} - Reemplaza a ${noA}`
+        }
     );
+}
 
     await showGenericModal('Préstamo interno registrado exitosamente.', 'Éxito');
     closeLoanModal();
@@ -1887,11 +1972,13 @@ async function guardarPrestamoUnidad() {
     const area = document.getElementById('unidad-area').value.trim();
     const responsable = document.getElementById('unidad-responsable').value.trim();
     const unidad = document.getElementById('unidad-asignada').value.trim();
+    const reemplazo = document.getElementById('unidad-reemplazo').value.trim(); // ✅ NUEVO
+    
     if (!area || !responsable || !unidad) {
         await showGenericModal('Por favor complete todos los campos (Área, Responsable y Ubicación/unidad asignada).', 'Aviso');
         return;
     }
-
+    
     const item = misDatos[currentItemIndex];
     const no = String(item["N"]);
     const estadoActual = item["ESTADO"] || "";
@@ -1899,17 +1986,17 @@ async function guardarPrestamoUnidad() {
         await showGenericModal('Este extintor ya tiene un préstamo activo.', 'Error');
         return;
     }
-
+    
     const btns = loanModal.querySelectorAll('.modal-actions .btn');
     const saveBtn = btns[0];
     const textoOriginal = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-
+    
     const fecha = new Date().toLocaleString('es-ES');
     const ubicacionTexto = unidad;
-    const detalle = `Préstamo a unidad - Área: ${area} - Responsable: ${responsable} - Unidad: ${unidad}`;
-
+    const detalle = `Préstamo a unidad - Área: ${area} - Responsable: ${responsable} - Unidad: ${unidad}${reemplazo ? ' - Reemplazo: N° ' + reemplazo : ''}`;
+    
     try {
         const [updateRes, insertRes] = await Promise.all([
             supabaseClient
@@ -1924,18 +2011,18 @@ async function guardarPrestamoUnidad() {
                     personal: responsable,
                     responsable_destino: area,
                     ubicacion_destino: unidad,
+                    reemplazo: reemplazo || null, // ✅ NUEVO: se guarda el reemplazo
                     detalle: detalle,
                     activo: true
                 })
                 .select()
                 .single()
         ]);
-
+        
         if (updateRes.error) throw new Error('Error al actualizar el extintor: ' + updateRes.error.message);
         if (insertRes.error) throw new Error('Error al registrar el movimiento: ' + insertRes.error.message);
-
+        
         const movInsertado = insertRes.data;
-
         const idx = misDatos.findIndex(it => String(it["N"]) === no);
         if (idx !== -1) {
             misDatos[idx] = {
@@ -1944,18 +2031,18 @@ async function guardarPrestamoUnidad() {
                 ESTADO: 'Prestado'
             };
         }
-
+        
         movimientosPrestamoActivos[no] = {
             tipo: 'prestamo_unidad',
             personal: responsable,
             motivo: null,
-            reemplazo: null,
+            reemplazo: reemplazo || null, // ✅ NUEVO
             responsable_destino: area,
             ubicacion_destino: unidad,
             fecha: fecha
         };
         movimientosActivos[no] = movimientosPrestamoActivos[no];
-
+        
         historialCompleto.unshift({
             id: movInsertado ? movInsertado.id : undefined,
             fecha: fecha,
@@ -1964,12 +2051,13 @@ async function guardarPrestamoUnidad() {
             personal: responsable,
             detalle: detalle
         });
-
+        
+        // ✅ Limpiar el nuevo campo al cerrar
+        document.getElementById('unidad-reemplazo').value = '';
+        
         closeLoanModal();
         applyFilters();
-
         await showGenericModal('Préstamo a unidad registrado correctamente.', 'Éxito');
-
     } catch (err) {
         console.error(err);
         await showGenericModal(err.message || 'Error inesperado al registrar el préstamo.', 'Error');
@@ -2981,120 +3069,6 @@ async function confirmarNuevoReemplazo() {
     applyFilters();
 
     await showGenericModal(`Nuevo extintor ${numeroNuevo} creado y reemplazo registrado.`, 'Éxito');
-}
-
-// ============================================================
-//  CARGA DE DATOS
-// ============================================================
-async function cargarDatosSecundarios() {
-    const [{ data: observaciones, error: obsErr }, { data: movimientos, error: movErr }] = await Promise.all([
-        supabaseClient.from(TABLA_OBSERVACIONES).select('*').order('created_at', { ascending: false }),
-        supabaseClient.from(TABLA_MOVIMIENTOS).select('*').order('created_at', { ascending: false })
-    ]);
-    if (obsErr) console.error(obsErr);
-    else observacionesPublicas = (observaciones || []).map(o => ({ id: o.id, no: o.n_extintor, texto: o.texto, fecha: new Date(o.created_at).toLocaleDateString('es-ES') }));
-    if (movErr) { console.error(movErr); return; }
-    movimientosActivos = {};
-    movimientosPrestamoActivos = {};
-    movimientosGarantiaActivos = {};
-    historialCompleto = [];
-    extintoresReemplazados = {};
-    (movimientos || []).forEach(mov => {
-
-        if (mov.tipo === 'reemplazo_baja' && mov.reemplazo) {
-            extintoresReemplazados[String(mov.reemplazo)] = String(mov.n_extintor);
-        }
-        const fecha = new Date(mov.created_at).toLocaleString('es-ES');
-        let tipoTexto = '';
-        if (mov.tipo === 'prestamo_unidad') tipoTexto = 'Préstamo a unidad';
-        else if (mov.tipo === 'prestamo_interno') tipoTexto = 'Préstamo Interno';
-        else if (mov.tipo === 'retorno') tipoTexto = 'Retorno';
-        else if (mov.tipo === 'baja') tipoTexto = 'Baja';
-        else if (mov.tipo === 'garantia') tipoTexto = 'Garantía';
-        else if (mov.tipo === 'reemplazo_baja') tipoTexto = 'Reemplazo de baja';
-        else tipoTexto = 'Otro';
-        historialCompleto.push({
-            id: mov.id,
-            fecha: fecha,
-            no: mov.n_extintor,
-            tipo: tipoTexto,
-            personal: mov.personal || '-',
-            detalle: mov.detalle || (mov.tipo === 'prestamo_interno' ? `Reemplazo: ${mov.reemplazo || '-'}` : '')
-        });
-        if (mov.activo) {
-            movimientosActivos[mov.n_extintor] = { tipo: mov.tipo, personal: mov.personal, motivo: mov.motivo, reemplazo: mov.reemplazo, responsable_destino: mov.responsable_destino, ubicacion_destino: mov.ubicacion_destino, fecha: fecha };
-            if (mov.tipo === 'prestamo_interno' || mov.tipo === 'prestamo_unidad') {
-                movimientosPrestamoActivos[mov.n_extintor] = { tipo: mov.tipo, personal: mov.personal, motivo: mov.motivo, reemplazo: mov.reemplazo, responsable_destino: mov.responsable_destino, ubicacion_destino: mov.ubicacion_destino, fecha: fecha };
-            } else if (mov.tipo === 'garantia') {
-                movimientosGarantiaActivos[mov.n_extintor] = { reemplazo: mov.reemplazo, personal: mov.personal, fecha: fecha };
-            }
-        }
-    });
-}
-
-async function refreshdata() {
-    try {
-        // 1. Cargar Extintores
-        const { data: extintores, error: errExtintores } = await supabaseClient
-            .from(TABLA_EXTINTORES)
-            .select('*');
-        
-        if (errExtintores) throw errExtintores;
-        misDatos = extintores || [];
-
-        // 2. Cargar Movimientos (Historial y Activos)
-        const { data: movimientos, error: errMovs } = await supabaseClient
-            .from(TABLA_MOVIMIENTOS)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (errMovs) throw errMovs;
-        
-        // Formatear historial completo
-        historialCompleto = (movimientos || []).map(mov => ({
-            id: mov.id,
-            fecha: new Date(mov.created_at).toLocaleString('es-ES'),
-            no: mov.n_extintor,
-            tipo: mov.tipo,
-            personal: mov.personal || 'Sistema',
-            detalle: mov.detalle || ''
-        }));
-
-        // Cargar movimientos activos (esta función ya la tienes en tu código)
-        await cargarMovimientosActivos();
-
-        // 3. Cargar Observaciones
-        const { data: observaciones, error: errObs } = await supabaseClient
-            .from(TABLA_OBSERVACIONES)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (errObs) throw errObs;
-        
-        observacionesPublicas = (observaciones || []).map(o => ({
-            id: o.id,
-            no: o.n_extintor,
-            texto: o.texto,
-            fecha: new Date(o.created_at).toLocaleDateString('es-ES')
-        }));
-
-        // 4. ACTUALIZAR FILTROS DINÁMICOS (TIPO Y CAPACIDAD)
-        actualizarFiltrosDesdeDB(); // <--- AQUÍ SE LLENA EL SELECT DE TIPOS Y CAPACIDADES
-
-        // 5. Inicializar autocompletados y renderizar la tabla
-        if (typeof inicializarAutocompletes === 'function') {
-            inicializarAutocompletes();
-        }
-        poblarResponsables();
-                // ... (esto continúa justo después de: poblarResponsables(); )
-        applyFilters();
-
-    } catch (error) {
-        console.error('Error cargando datos:', error);
-        if (typeof showGenericModal === 'function') {
-            await showGenericModal('Error al cargar los datos: ' + error.message, 'Error');
-        }
-    }
 }
 
 // ============================================================

@@ -120,7 +120,10 @@
     <!-- NUEVO BOTÓN -->
         <button class="btn" id="btn-sub-otras" onclick="cambiarSubTab('otras', this)" style="background: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px;">Otras áreas</button>
     </div>
-
+<!-- NUEVO BOTÓN PARA MÓVIL -->
+<button id="filtersToggle" class="btn btn-secondary" style="display: none; width: 100%; margin-bottom: 16px; justify-content: center; background: white; border: 1px solid #cbd5e1; color: #334155; padding: 10px 20px; border-radius: 10px; font-weight: 600; gap: 8px;">
+    <i class="fas fa-filter"></i> Mostrar / Ocultar Filtros
+    </button>
     <!-- Panel de Filtros -->
     <div class="filters-container">
         <div class="filters-header">
@@ -468,7 +471,11 @@
                     <label for="unidad-asignada">Ubicación/unidad asignada:</label>
                     <input type="text" id="unidad-asignada" placeholder="Escriba la ubicación o unidad">
                 </div>
-            </div>
+                <div class="form-group">
+        <label for="unidad-reemplazo">Extintor que va a reemplazar (STOCK):</label>
+        <input type="text" id="unidad-reemplazo" placeholder="N° de extintor de STOCK que ocupará su lugar">
+    </div>
+</div>
 
             <div id="campos-traslado" style="display:none;">
                 <div class="form-group">
