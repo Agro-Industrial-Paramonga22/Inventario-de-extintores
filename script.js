@@ -813,35 +813,6 @@ function itemMatchesDateRange(item, desde, hasta) {
     if (fin !== null && fechaItem > fin) return false;
     return true;
 }
-function actualizarVisibilidadFiltros() {
-    const gArea = document.getElementById('filter-group-area');
-    const gNumero = document.getElementById('filter-group-numero');
-    const gSerie = document.getElementById('filter-group-serie');
-    const gVencimiento = document.getElementById('filter-group-vencimiento');
-    const gTipo = document.getElementById('tipo-filter')?.closest('.filter-group');
-    const gCapacidad = document.getElementById('capacidad-filter')?.closest('.filter-group');
-    const gCondicion = document.getElementById('filter-group-condicion');
-
-    if (isAdmin) {
-        // Admin ve todo menos Condición
-        if (gArea) gArea.style.display = 'block';
-        if (gNumero) gNumero.style.display = 'block';
-        if (gSerie) gSerie.style.display = 'block';
-        if (gVencimiento) gVencimiento.style.display = 'block';
-        if (gTipo) gTipo.style.display = 'block';
-        if (gCapacidad) gCapacidad.style.display = 'block';
-        if (gCondicion) gCondicion.style.display = 'none'; 
-    } else {
-        // Público ve SOLO Área y Condición
-        if (gArea) gArea.style.display = 'block';
-        if (gCondicion) gCondicion.style.display = 'block';
-        if (gNumero) gNumero.style.display = 'none';
-        if (gSerie) gSerie.style.display = 'none';
-        if (gVencimiento) gVencimiento.style.display = 'none';
-        if (gTipo) gTipo.style.display = 'none';
-        if (gCapacidad) gCapacidad.style.display = 'none';
-    }
-}
 // ============================================================
 //  FILTROS DINÁMICOS (TIPO Y CAPACIDAD)
 // ============================================================
@@ -940,23 +911,50 @@ function poblarResponsables() {
     if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
 }
 
-function inicializarAutocompletes() {
-    const areaInput = document.getElementById('unidad-area');
-    const areaDropdown = document.getElementById('unidad-area-dropdown');
-    const areaClear = document.getElementById('unidad-area-clear');
-
-    if (areaInput) {
-        unidadAreaAutocomplete = crearAutocomplete({
-            input: areaInput,
-            dropdown: areaDropdown,
-            clearBtn: areaClear,
-            getOptions: obtenerAreasResponsables
-        });
+function actualizarVisibilidadFiltros() {
+    const gArea = document.getElementById('filter-group-area');
+    const gNumero = document.getElementById('filter-group-numero');
+    const gSerie = document.getElementById('filter-group-serie');
+    const gVencimiento = document.getElementById('filter-group-vencimiento');
+    const gTipo = document.getElementById('tipo-filter')?.closest('.filter-group');
+    const gCapacidad = document.getElementById('capacidad-filter')?.closest('.filter-group');
+    const gCondicion = document.getElementById('filter-group-condicion');
+    
+    if (isAdmin) {
+        if (currentTab === 'almacen') {
+            // En Almacén SST: solo Tipo y Capacidad
+            if (gArea) gArea.style.display = 'none';
+            if (gNumero) gNumero.style.display = 'none';
+            if (gSerie) gSerie.style.display = 'none';
+            if (gVencimiento) gVencimiento.style.display = 'none';
+            if (gTipo) gTipo.style.display = 'block';
+            if (gCapacidad) gCapacidad.style.display = 'block';
+            if (gCondicion) gCondicion.style.display = 'none';
+        } else {
+            // En otras pestañas admin: todo excepto Condición
+            if (gArea) gArea.style.display = 'block';
+            if (gNumero) gNumero.style.display = 'block';
+            if (gSerie) gSerie.style.display = 'block';
+            if (gVencimiento) gVencimiento.style.display = 'block';
+            if (gTipo) gTipo.style.display = 'block';
+            if (gCapacidad) gCapacidad.style.display = 'block';
+            if (gCondicion) gCondicion.style.display = 'none';
+        }
+    } else {
+        // Público ve SOLO Área y Condición
+        if (gArea) gArea.style.display = 'block';
+        if (gCondicion) gCondicion.style.display = 'block';
+        if (gNumero) gNumero.style.display = 'none';
+        if (gSerie) gSerie.style.display = 'none';
+        if (gVencimiento) gVencimiento.style.display = 'none';
+        if (gTipo) gTipo.style.display = 'none';
+        if (gCapacidad) gCapacidad.style.display = 'none';
     }
-        const filtroAreaInput = document.getElementById('area-filter');
+}
+function inicializarAutocompletes() {
+    const filtroAreaInput = document.getElementById('area-filter');
     const filtroAreaDropdown = document.getElementById('area-dropdown');
     const filtroAreaClear = document.getElementById('area-clear');
-
     if (filtroAreaInput) {
         crearAutocomplete({
             input: filtroAreaInput,
@@ -967,8 +965,19 @@ function inicializarAutocompletes() {
             onInput: () => applyFilters()
         });
     }
+    
+    // Filtro de número de extintor
+    const numeroFilter = document.getElementById('numero-filter');
+    if (numeroFilter) {
+        numeroFilter.addEventListener('input', () => applyFilters());
+    }
+    
+    // Filtro de número de serie
+    const serieFilter = document.getElementById('serie-filter');
+    if (serieFilter) {
+        serieFilter.addEventListener('input', () => applyFilters());
+    }
 }
-
 function updateCounter(mostrados, total) {
     counterDisplay.innerHTML = `Mostrando <strong>${mostrados}</strong> de <strong>${total}</strong> extintores`;
 }
@@ -3167,16 +3176,201 @@ async function iniciarApp() {
 }
 
 // ============================================================
-// EVENTOS PARA CERRAR MODALES AL HACER CLIC FUERA
+// SISTEMA DE MODALES CON ESC Y SIN CLICK FUERA
 // ============================================================
-detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeModal(); });
-loanModal.addEventListener('click', (e) => { if (e.target === loanModal) closeLoanModal(); });
-historyModal.addEventListener('click', (e) => { if (e.target === historyModal) closeHistoryModal(); });
-observationsModal.addEventListener('click', (e) => { if (e.target === observationsModal) closeObservationsModal(); });
-observationFormModal.addEventListener('click', (e) => { if (e.target === observationFormModal) closeObservationFormModal(); });
-editorModal.addEventListener('click', (e) => { if (e.target === editorModal) closeEditorModal(); });
-document.getElementById('nuevo-reemplazo-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeNuevoReemplazoModal(); });
-document.getElementById('garantias-pendientes-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeGarantiasPendientesModal(); });
+let modalesAbiertos = [];
+
+function registrarModal(modal) {
+    if (!modalesAbiertos.includes(modal)) {
+        modalesAbiertos.push(modal);
+    }
+}
+
+function quitarModal(modal) {
+    modalesAbiertos = modalesAbiertos.filter(m => m !== modal);
+}
+
+function obtenerFuncionCerrar(modal) {
+    const mapa = {
+        'detail-modal': closeModal,
+        'loan-modal': closeLoanModal,
+        'history-modal': closeHistoryModal,
+        'observations-modal': closeObservationsModal,
+        'observation-form-modal': closeObservationFormModal,
+        'editor-modal': closeEditorModal,
+        'generic-modal': closeGenericModal,
+        'prompt-modal': closePromptModal,
+        'descartados-modal': closeDescartadosModal,
+        'editar-descartado-modal': closeEditarDescartadoModal,
+        'nuevo-reemplazo-modal': closeNuevoReemplazoModal,
+        'garantias-pendientes-modal': closeGarantiasPendientesModal
+    };
+    return mapa[modal.id] || null;
+}
+
+// Listener global de ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalesAbiertos.length > 0) {
+        e.preventDefault();
+        const modalActivo = modalesAbiertos[modalesAbiertos.length - 1];
+        const cerrar = obtenerFuncionCerrar(modalActivo);
+        if (cerrar) cerrar();
+    }
+});
+
+// Modificar cada función de apertura para registrar el modal
+const originalShowModal = showModal;
+showModal = function(item) {
+    originalShowModal(item);
+    registrarModal(detailModal);
+};
+
+const originalVerHistorial = verHistorial;
+verHistorial = function() {
+    originalVerHistorial();
+    registrarModal(historyModal);
+};
+
+const originalVerObservaciones = verObservacionesGenerales;
+verObservacionesGenerales = function() {
+    originalVerObservaciones();
+    registrarModal(observationsModal);
+};
+
+const originalAbrirFormulario = abrirFormularioObservacion;
+abrirFormularioObservacion = function(itemIndex) {
+    originalAbrirFormulario(itemIndex);
+    registrarModal(observationFormModal);
+};
+
+const originalOpenLoan = openLoanForm;
+openLoanForm = function(itemIndex) {
+    originalOpenLoan(itemIndex);
+    registrarModal(loanModal);
+};
+
+const originalAbrirEditor = abrirEditor;
+abrirEditor = function(itemIndex) {
+    originalAbrirEditor(itemIndex);
+    registrarModal(editorModal);
+};
+
+const originalAbrirNuevo = abrirNuevoExtintor;
+abrirNuevoExtintor = function() {
+    originalAbrirNuevo();
+    registrarModal(editorModal);
+};
+
+const originalVerDescartados = verDescartados;
+verDescartados = function() {
+    originalVerDescartados();
+    registrarModal(document.getElementById('descartados-modal'));
+};
+
+const originalAbrirEditar = abrirEditarDescartado;
+abrirEditarDescartado = function(index) {
+    originalAbrirEditar(index);
+    registrarModal(document.getElementById('editar-descartado-modal'));
+};
+
+const originalAbrirReemplazo = abrirNuevoReemplazo;
+abrirNuevoReemplazo = function() {
+    originalAbrirReemplazo();
+    registrarModal(document.getElementById('nuevo-reemplazo-modal'));
+};
+
+const originalVerGarantias = verGarantiasPendientes;
+verGarantiasPendientes = function() {
+    originalVerGarantias();
+    registrarModal(document.getElementById('garantias-pendientes-modal'));
+};
+
+const originalShowGeneric = showGenericModal;
+showGenericModal = function(message, title, confirmText, cancelText) {
+    const promesa = originalShowGeneric(message, title, confirmText, cancelText);
+    registrarModal(document.getElementById('generic-modal'));
+    return promesa;
+};
+
+const originalShowPrompt = showPromptModal;
+showPromptModal = function(message, title, defaultValue) {
+    const promesa = originalShowPrompt(message, title, defaultValue);
+    registrarModal(document.getElementById('prompt-modal'));
+    return promesa;
+};
+
+// Modificar cada función de cierre para quitar de la pila
+const originalCloseModal = closeModal;
+closeModal = function() {
+    originalCloseModal();
+    quitarModal(detailModal);
+};
+
+const originalCloseLoan = closeLoanModal;
+closeLoanModal = function() {
+    originalCloseLoan();
+    quitarModal(loanModal);
+};
+
+const originalCloseHistory = closeHistoryModal;
+closeHistoryModal = function() {
+    originalCloseHistory();
+    quitarModal(historyModal);
+};
+
+const originalCloseObs = closeObservationsModal;
+closeObservationsModal = function() {
+    originalCloseObs();
+    quitarModal(observationsModal);
+};
+
+const originalCloseObsForm = closeObservationFormModal;
+closeObservationFormModal = function() {
+    originalCloseObsForm();
+    quitarModal(observationFormModal);
+};
+
+const originalCloseEditor = closeEditorModal;
+closeEditorModal = function() {
+    originalCloseEditor();
+    quitarModal(editorModal);
+};
+
+const originalCloseGeneric = closeGenericModal;
+closeGenericModal = function() {
+    originalCloseGeneric();
+    quitarModal(document.getElementById('generic-modal'));
+};
+
+const originalClosePrompt = closePromptModal;
+closePromptModal = function() {
+    originalClosePrompt();
+    quitarModal(document.getElementById('prompt-modal'));
+};
+
+const originalCloseDesc = closeDescartadosModal;
+closeDescartadosModal = function() {
+    originalCloseDesc();
+    quitarModal(document.getElementById('descartados-modal'));
+};
+
+const originalCloseEditDesc = closeEditarDescartadoModal;
+closeEditarDescartadoModal = function() {
+    originalCloseEditDesc();
+    quitarModal(document.getElementById('editar-descartado-modal'));
+};
+
+const originalCloseReemp = closeNuevoReemplazoModal;
+closeNuevoReemplazoModal = function() {
+    originalCloseReemp();
+    quitarModal(document.getElementById('nuevo-reemplazo-modal'));
+};
+
+const originalCloseGar = closeGarantiasPendientesModal;
+closeGarantiasPendientesModal = function() {
+    originalCloseGar();
+    quitarModal(document.getElementById('garantias-pendientes-modal'));
+};
 
 // Arrancar la aplicación
 iniciarApp();
