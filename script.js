@@ -371,6 +371,7 @@ let promptResolve = null;
 
 function showGenericModal(message, title = 'Aviso', confirmText = 'Aceptar', cancelText = null) {
     return new Promise((resolve) => {
+        document.querySelector('.menu-dropdown')?.classList.remove('open'); 
         const modal = document.getElementById('generic-modal');
         document.getElementById('generic-modal-title').textContent = title;
         document.getElementById('generic-modal-body').textContent = message;
@@ -387,8 +388,8 @@ function showGenericModal(message, title = 'Aviso', confirmText = 'Aceptar', can
         modal.classList.add('active');
     });
 }
-function confirmGenericModal() { document.getElementById('generic-modal').classList.remove('active'); if (genericResolve) genericResolve(true); genericResolve = null; }
-function cancelGenericModal() { document.getElementById('generic-modal').classList.remove('active'); if (genericResolve) genericResolve(false); genericResolve = null; }
+function confirmGenericModal() { document.getElementById('generic-modal').classList.remove('active'); closeGenericModal(); if (genericResolve) genericResolve(true); genericResolve = null; }
+function cancelGenericModal() { document.getElementById('generic-modal').classList.remove('active');  closeGenericModal(); if (genericResolve) genericResolve(false); genericResolve = null; }
 function closeGenericModal() { document.getElementById('generic-modal').classList.remove('active'); if (genericResolve) genericResolve(false); genericResolve = null; }
 
 function showPromptModal(message, title = 'Ingrese información', defaultValue = '') {

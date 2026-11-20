@@ -2015,20 +2015,14 @@ tbody td:first-child strong {
 /* ============================================================
    FILTROS COLAPSABLES EN MÓVIL (BUG 2)
    ============================================================ */
-
-/* En escritorio, el botón está oculto y los filtros siempre visibles */
 #filtersToggle {
     display: none;
 }
 
-/* Cuando la pantalla es pequeña (celular/tablet) */
 @media (max-width: 640px) {
-    /* Mostramos el botón de "Mostrar/Ocultar" */
     #filtersToggle {
         display: inline-flex !important;
     }
-    
-    /* Si el contenedor tiene la clase 'collapsed', lo ocultamos */
     .filters-container.collapsed {
         display: none !important;
     }
