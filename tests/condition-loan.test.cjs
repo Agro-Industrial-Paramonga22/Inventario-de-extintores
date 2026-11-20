@@ -67,8 +67,8 @@ async function finish({selected = 0, ambiguous = false, single = false, unit = f
     const replacement = {N:'2', CONDICION:'Vigente', ESTADO:'Prestado', 'F. VENC.':'03/2028'};
     const data = [original, replacement];
     const loans = unit ? {'1':{tipo:'prestamo_unidad'}} : {
-        '1':{tipo:'prestamo_interno', reemplazo:single ? null : '2', ubicacion_destino:ambiguous ? '' : 'Mantenimiento / Almacén SST'},
-        '2':{tipo:'prestamo_interno', reemplazo:'1', ubicacion_destino:'Préstamo a: otra área'}
+        '1':{tipo:'prestamo_interno', motivo:'Usado', reemplazo:single ? null : '2', ubicacion_destino:ambiguous ? '' : 'Mantenimiento / Almacén SST'},
+        '2':{tipo:'prestamo_interno', motivo:'Usado', reemplazo:'1', ubicacion_destino:'Préstamo a: otra área'}
     };
     const writes = [], messages = [], prompts = [];
     const db = {from(table) {return {update(patch) {const filters=[]; const chain={eq(k,v){filters.push([k,v]);return chain;},in(){return chain;},then(resolve){writes.push({table,patch,filters}); if (fail) return resolve({error:{message:'error simulado'}}); if(table==='ext'){const number=filters.find(([k])=>k==='N')[1];Object.assign(data.find(x=>x.N===number),patch);}resolve({error:null});}};return chain;}};}};
@@ -81,7 +81,7 @@ for (const selected of [0,1]) test(`cierre desde ${selected ? 'reemplazo' : 'ori
     const {original,replacement,prompts} = await finish({selected});
     assert.equal(original['F. VENC.'], '12/2026');
     assert.equal(original.proxima_recarga, null);
-    assert.equal(original.CONDICION, 'Usado');
+    assert.equal(original.CONDICION, null);
     assert.equal(replacement['F. VENC.'], '03/2028');
     assert.match(prompts[0][0], /N° 1/);
     assert.equal(prompts[0][2], '06/2025');

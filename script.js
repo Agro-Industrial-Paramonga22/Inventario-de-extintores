@@ -46,6 +46,12 @@ let isAdmin = sessionStorage.getItem('extintor_admin') === 'true';
 //  REFERENCIAS DOM
 // ============================================================
 const condicionFilter = document.getElementById('condicion-filter');
+if (condicionFilter) {
+    condicionFilter.addEventListener('change', (e) => {
+        globalCondicionFilter = e.target.value;
+        applyFilters();
+    });
+}
 const responsableFilter = document.getElementById('responsable-filter');
 const tableBody = document.getElementById('table-body');
 const detailModal = document.getElementById('detail-modal');
@@ -93,7 +99,12 @@ function limpiarFiltros() {
 }
 function cambiarTab(tab, element) {
     currentTab = tab;
-     globalCondicionFilter = '';
+    globalCondicionFilter = '';
+    
+    // Añadir estas líneas para resetear el select
+    const selectCond = document.getElementById('condicion-filter');
+    if (selectCond) selectCond.value = '';
+
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     if (element) element.classList.add('active');
 
@@ -130,9 +141,22 @@ function filtrarPorKPI(tipo) {
     if (currentTab !== 'todos') {
         cambiarTab('todos', document.querySelector('.tab-btn')); 
     }
-    if (tipo === 'vigente') globalCondicionFilter = 'Vigente';
-    else if (tipo === 'por_vencer') globalCondicionFilter = 'PorVencer';
-    else if (tipo === 'vencido') globalCondicionFilter = 'Vencido';
+    
+    let valorFiltro = '';
+    if (tipo === 'vigente') valorFiltro = 'Vigente';
+    else if (tipo === 'por_vencer') valorFiltro = 'PorVencer';
+    else if (tipo === 'vencido') valorFiltro = 'Vencido';
+    
+    globalCondicionFilter = valorFiltro;
+
+    // Sincronizar el select visualmente
+    const selectCond = document.getElementById('condicion-filter');
+    if (selectCond) {
+        // Verificamos si la opción existe en el select (PorVencer no está en público)
+        const opcionExiste = Array.from(selectCond.options).some(opt => opt.value === valorFiltro);
+        selectCond.value = opcionExiste ? valorFiltro : '';
+    }
+
     applyFilters();
 }
 
@@ -1595,6 +1619,38 @@ async function guardarPrestamoInterno() {
     }
 
     const noB = String(itemBData["N"]);
+
+    if (noB === noA) {
+        await showGenericModal('El extintor de reemplazo no puede ser el mismo que se reporta.', 'Error');
+        return;
+    }
+
+    const estadoB = String(itemBData["ESTADO"] || "").trim();
+    const condicionB = String(itemBData["CONDICION"] || "").trim();
+    const ESTADOS_NO_DISPONIBLES = ['Prestado', 'Almacén SST', 'Extintor pendiente', 'Garantía - Recibido'];
+
+    if (condicionB === 'Baja' || condicionB === 'Reemplazado') {
+        await showGenericModal(`El extintor N° ${noB} está dado de baja y no puede usarse como reemplazo.`, 'Error');
+        return;
+    }
+
+    if (ESTADOS_NO_DISPONIBLES.includes(estadoB)) {
+        await showGenericModal(`El extintor N° ${noB} no está disponible (estado: ${estadoB}). Elija otro reemplazo.`, 'Error');
+        return;
+    }
+
+    const { data: movimientosB } = await supabaseClient
+        .from(TABLA_MOVIMIENTOS)
+        .select('tipo')
+        .eq('n_extintor', noB)
+        .eq('activo', true)
+        .in('tipo', ['prestamo_interno', 'prestamo_unidad', 'garantia']);
+
+    if (movimientosB && movimientosB.length > 0) {
+        await showGenericModal(`El extintor N° ${noB} ya está involucrado en otro movimiento activo. Elija otro reemplazo.`, 'Error');
+        return;
+    }
+
     const responsableOriginalA = itemA["AREA RESPONSABLE"] || "Sin responsable";
     const fechaOriginal = itemA["F. VENC."] || "-";
 
@@ -2128,6 +2184,12 @@ async function finalizarPrestamo(itemIndex) {
         };
         if (num === (esPrestamoInterno ? noOriginal : no)) {
             updateData.proxima_recarga = null;
+            // La condición con la que salió el extintor se borra al volver.
+            const motivoMovimiento = String(movimientosPrestamoActivos[num]?.motivo || '').trim();
+            const condicionActual = String((misDatos.find(x => String(x.N) === num) || {})["CONDICION"] || '').trim();
+            if (motivoMovimiento && condicionActual && motivoMovimiento === condicionActual) {
+                updateData.CONDICION = null;
+            }
             if (nuevaFechaReal) {
                 updateData["F. VENC."] = nuevaFechaReal;
             }
