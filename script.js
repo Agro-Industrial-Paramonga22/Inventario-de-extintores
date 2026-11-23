@@ -62,9 +62,9 @@ function getTipoLabel(tipo) {
 // Función para limpiar detalles antiguos y eliminar redundancia
 function limpiarDetalle(detalle, tipo, personal) {
     if (!detalle) return '-';
-    
+
     let limpio = detalle;
-    
+
     // Eliminar el tipo al inicio
     const tipoLabel = getTipoLabel(tipo);
     if (limpio.startsWith(tipoLabel + ' - ')) {
@@ -72,7 +72,7 @@ function limpiarDetalle(detalle, tipo, personal) {
     } else if (limpio.startsWith(tipo + ' - ')) {
         limpio = limpio.substring(tipo.length + 3);
     }
-    
+
     // Eliminar "Personal: X - "
     if (personal && personal !== '-') {
         const patronPersonal = new RegExp(`Personal:\\s*${personal}\\s*-\\s*`, 'i');
@@ -80,7 +80,7 @@ function limpiarDetalle(detalle, tipo, personal) {
     } else {
         limpio = limpio.replace(/Personal:\s*[^-]*-\s*/i, '');
     }
-    
+
     // Eliminar prefijos redundantes
     limpio = limpio.replace(/^Extintor\s+\S+\s+reportado\s+como\s+/i, 'Reportado como ');
     limpio = limpio.replace(/^Extintor\s+\S+\s+\(STOCK\)\s+enviado\s+a\s+/i, '(STOCK) enviado a ');
@@ -91,7 +91,7 @@ function limpiarDetalle(detalle, tipo, personal) {
     limpio = limpio.replace(/^Préstamo\s+finalizado/i, 'Finalizado');
     limpio = limpio.replace(/^Traslado\s+a\s+Almacén\s*-\s*/i, '');
     limpio = limpio.replace(/^Extintor\s+\S+\s+retirado\s+del\s+área/i, 'Retirado del área');
-    
+
     return limpio.trim() || '-';
 }
 const TABLA_EXTINTORES = 'Extintores_Prueba';
@@ -144,7 +144,6 @@ let misDatos = [];
 let movimientosActivos = {};
 let movimientosPrestamoActivos = {};
 let movimientosGarantiaActivos = {};
-let nuevoReemplazoData = {};
 let editorModoCreacion = false;
 let currentTab = 'todos';
 let currentSubTab = 'stock';
@@ -158,9 +157,9 @@ function limpiarFiltros() {
     document.getElementById('capacidad-filter').value = '';
       const condSelect = document.getElementById('condicion-filter');
     if (condSelect) condSelect.value = '';
-    
+
     globalCondicionFilter = ''; // <--- ESTA ES LA LÍNEA QUE FALTABA
-    
+
     calRangeStart = null;
     calRangeEnd = null;
     calPendingDesde = "";
@@ -241,14 +240,14 @@ function cambiarSubTab(subTab, element) {
 }
 function filtrarPorKPI(tipo) {
     if (currentTab !== 'todos') {
-        cambiarTab('todos', document.querySelector('.tab-btn')); 
+        cambiarTab('todos', document.querySelector('.tab-btn'));
     }
-    
+
     let valorFiltro = '';
     if (tipo === 'vigente') valorFiltro = 'Vigente';
     else if (tipo === 'por_vencer') valorFiltro = 'PorVencer';
     else if (tipo === 'vencido') valorFiltro = 'Vencido';
-    
+
     globalCondicionFilter = valorFiltro;
 
     // Sincronizar el select visualmente
@@ -439,7 +438,7 @@ let promptResolve = null;
 
 function showGenericModal(message, title = 'Aviso', confirmText = 'Aceptar', cancelText = null) {
     return new Promise((resolve) => {
-        document.querySelector('.menu-dropdown')?.classList.remove('open'); 
+        document.querySelector('.menu-dropdown')?.classList.remove('open');
         const modal = document.getElementById('generic-modal');
         document.getElementById('generic-modal-title').textContent = title;
         document.getElementById('generic-modal-body').textContent = message;
@@ -492,14 +491,13 @@ function actualizarMenuAdmin() {
     const btnObservaciones = document.getElementById('btnObservaciones');
     const btnHistorial = document.getElementById('btnHistorial');
     const btnExportar = document.getElementById('btnExportar');
-    
+
     // Botones que agregaremos en el siguiente paso
     const btnAgregarExtintor = document.getElementById('btnAgregarExtintor');
-    const menuDescartados = document.getElementById('menuDescartados'); 
     if (isAdmin) {
         const nombreAdmin = sessionStorage.getItem('extintor_admin_nombre') || 'Administrador';
         const rolAdmin = sessionStorage.getItem('extintor_admin_rol') || 'admin';
-        
+
         // Cambiamos el botón de login por el perfil del admin
         if (btnLogin) {
             btnLogin.innerHTML = `<i class="fas fa-user-circle"></i> ${nombreAdmin} (${rolAdmin})`;
@@ -511,9 +509,8 @@ function actualizarMenuAdmin() {
         if (btnObservaciones) btnObservaciones.style.display = 'inline-flex';
         if (btnHistorial) btnHistorial.style.display = 'inline-flex';
         if (btnExportar) btnExportar.style.display = 'inline-flex';
-        
+
         if (btnAgregarExtintor) btnAgregarExtintor.style.display = 'inline-flex';
-        if (menuDescartados) menuDescartados.style.display = 'inline-flex';
     } else {
         // Estado público (Sin loguear)
         if (btnLogin) {
@@ -526,15 +523,13 @@ function actualizarMenuAdmin() {
         if (btnObservaciones) btnObservaciones.style.display = 'none';
         if (btnHistorial) btnHistorial.style.display = 'none';
         if (btnExportar) btnExportar.style.display = 'none';
-        
+
         if (btnAgregarExtintor) btnAgregarExtintor.style.display = 'none';
-        if (menuDescartados) menuDescartados.style.display = 'none';
     }
 }
 
 function aplicarPermisos() {
     const estadoHeader = document.getElementById('estado-header');
-    const garantiaHeader = document.getElementById('garantia-header');
     const tableHead = document.getElementById('table-head');
     const mainTabs = document.getElementById('main-tabs');
     const subTabs = document.getElementById('sub-tabs-almacen');
@@ -546,7 +541,6 @@ function aplicarPermisos() {
             // ADMIN: Ve todo
             ths.forEach(th => th.style.display = 'table-cell');
             if (estadoHeader) estadoHeader.style.display = 'table-cell';
-            if (garantiaHeader) garantiaHeader.style.display = 'table-cell';
             if (mainTabs) mainTabs.style.display = 'flex';
             if (subTabs && currentTab === 'almacen') subTabs.style.display = 'flex';
             if (kpiGrid) kpiGrid.style.display = 'grid'; // mostrar KPIs
@@ -564,7 +558,7 @@ function aplicarPermisos() {
             if (kpiGrid) kpiGrid.style.display = 'none'; // ocultar KPIs
         }
     }
-    
+
     actualizarOpcionesCondicion();
     actualizarMenuAdmin();
     actualizarVisibilidadFiltros();
@@ -582,7 +576,7 @@ function actualizarOpcionesCondicion() {
         <option value="Vigente">Vigente</option>
         <option value="Vencido">Vencido</option>
     `;
-    
+
     // Mantener la selección si ya había una válida
     if (['Vigente', 'Vencido'].includes(valorActual)) {
         select.value = valorActual;
@@ -810,7 +804,7 @@ const MESES_NOMBRES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', '
 
 function renderCalendar() {
     // Ahora solo mostramos el AÑO en el encabezado, no el mes
-    calMonthLabel.textContent = calVisibleMonth.getFullYear(); 
+    calMonthLabel.textContent = calVisibleMonth.getFullYear();
     calDaysContainer.innerHTML = '';
     const year = calVisibleMonth.getFullYear();
 
@@ -850,11 +844,11 @@ function selectCalendarDate(date) {
         calStatus.textContent = 'Ahora selecciona el mes final';
         calApplyBtn.disabled = true;
     } else {
-        if (date < calRangeStart) { 
-            calRangeEnd = calRangeStart; 
-            calRangeStart = date; 
-        } else { 
-            calRangeEnd = date; 
+        if (date < calRangeStart) {
+            calRangeEnd = calRangeStart;
+            calRangeStart = date;
+        } else {
+            calRangeEnd = date;
         }
         const formatM = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
         calStatus.textContent = `Rango: ${formatM(calRangeStart)} - ${formatM(calRangeEnd)}`;
@@ -876,15 +870,15 @@ function closeCalendar() { calendarPopup.classList.remove('open'); dateTrigger.c
 function clearCalendarRange() { calRangeStart = null; calRangeEnd = null; calPendingDesde = ""; calPendingHasta = ""; calStatus.textContent = 'Selecciona la fecha de inicio'; calApplyBtn.disabled = true; updateDateLabel(); renderCalendar(); applyFilters(); }
 
 dateTrigger.addEventListener('click', (e) => { e.stopPropagation(); if (calendarPopup.classList.contains('open')) closeCalendar(); else openCalendar(); });
-document.getElementById('cal-prev').addEventListener('click', (e) => { 
-    e.stopPropagation(); 
-    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() - 1); 
-    renderCalendar(); 
+document.getElementById('cal-prev').addEventListener('click', (e) => {
+    e.stopPropagation();
+    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() - 1);
+    renderCalendar();
 });
-document.getElementById('cal-next').addEventListener('click', (e) => { 
-    e.stopPropagation(); 
-    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() + 1); 
-    renderCalendar(); 
+document.getElementById('cal-next').addEventListener('click', (e) => {
+    e.stopPropagation();
+    calVisibleMonth.setFullYear(calVisibleMonth.getFullYear() + 1);
+    renderCalendar();
 });
 calClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearCalendarRange(); });
 calApplyBtn.addEventListener('click', (e) => { e.stopPropagation(); if (calRangeStart && calRangeEnd) { calPendingDesde = toIsoMonth(calRangeStart); calPendingHasta = toIsoMonth(calRangeEnd); closeCalendar(); applyFilters(); } });
@@ -940,7 +934,7 @@ function actualizarFiltrosDesdeDB() {
     tiposArray.forEach(tipo => {
         tipoSelect.innerHTML += `<option value="${tipo}">${tipo}</option>`;
     });
-    
+
     if (tiposArray.includes(valorTipoActual)) {
         tipoSelect.value = valorTipoActual;
     } else {
@@ -956,12 +950,12 @@ function actualizarCapacidadesPorTipo() {
     const tipoSeleccionado = tipoSelect.value.toUpperCase();
 
     const capacidadesSet = new Set();
-    
+
     misDatos.forEach(item => {
         if (tipoSeleccionado && String(item["TIPO"]).toUpperCase().trim() !== tipoSeleccionado) {
             return;
         }
-        
+
         if (item["CAP."] && String(item["CAP."]).trim() !== "") {
             let cap = String(item["CAP."]).trim().toLowerCase();
             capacidadesSet.add(cap);
@@ -992,7 +986,7 @@ function actualizarCapacidadesPorTipo() {
 // Escuchar cuando el usuario cambie el tipo de extintor
 document.getElementById('tipo-filter').addEventListener('change', () => {
     actualizarCapacidadesPorTipo();
-    applyFilters(); 
+    applyFilters();
 });
 
 function compararNumeros(a, b) {
@@ -1024,7 +1018,7 @@ function actualizarVisibilidadFiltros() {
     const gTipo = document.getElementById('tipo-filter')?.closest('.filter-group');
     const gCapacidad = document.getElementById('capacidad-filter')?.closest('.filter-group');
     const gCondicion = document.getElementById('filter-group-condicion');
-    
+
     if (isAdmin) {
         if (currentTab === 'almacen') {
             // En Almacén SST: solo Tipo y Capacidad
@@ -1070,13 +1064,13 @@ function inicializarAutocompletes() {
             onInput: () => applyFilters()
         });
     }
-    
+
     // Filtro de número de extintor
     const numeroFilter = document.getElementById('numero-filter');
     if (numeroFilter) {
         numeroFilter.addEventListener('input', () => applyFilters());
     }
-    
+
     // Filtro de número de serie
     const serieFilter = document.getElementById('serie-filter');
     if (serieFilter) {
@@ -1106,11 +1100,11 @@ function actualizarTarjetasResumen() {
     const kpiVigentes = document.getElementById('kpi-vigentes');
     const kpiPorVencer = document.getElementById('kpi-por-vencer');
     const kpiVencidos = document.getElementById('kpi-vencidos');
-    
+
     if (!kpiTotal) return;
 
     const activos = misDatos.filter(item => item["CONDICION"] !== 'Baja');
-    
+
     let vigentes = 0;
     let vencidos = 0;
     let porVencer = 0;
@@ -1158,25 +1152,25 @@ function applyFilters() {
         if (currentTab === 'almacen') {
             const areaResp = String(item["AREA RESPONSABLE"] || "").trim().toUpperCase();
             const ubicAsignada = String(item["UBICACION"] || "").trim().toUpperCase();
-            
+
             let ubicActual = String(item["ubicacion_prestamo"] || "").trim().toLowerCase();
             if (ubicActual === 'null' || ubicActual === '-') ubicActual = "";
-            
+
             const estado = String(item["ESTADO"] || "").trim().toUpperCase();
 
             // Regla 1: Es propio del SST y su ubicación asignada es STOCK
             const isSstStock = areaResp.includes("SST") && ubicAsignada.includes("STOCK");
-            
+
             // Regla 2: Es de otra área, pero está en mantenimiento/almacén
             const isOtraAreaEnAlmacen = !isSstStock && (
-                estado.includes("ALMACÉN SST") || 
-                estado.includes("MANTENIMIENTO") || 
+                estado.includes("ALMACÉN SST") ||
+                estado.includes("MANTENIMIENTO") ||
                 ubicActual.includes("mantenimiento / almacén sst")
             );
 
             if (currentSubTab === 'stock') {
                 if (!isSstStock || ubicActual !== "") return false;
-            } 
+            }
             else if (currentSubTab === 'asignados') {
                 if (!isSstStock || ubicActual === "") return false;
             }
@@ -1201,7 +1195,7 @@ function applyFilters() {
         }
         if (numeroVal && !String(item["N"] || "").toLowerCase().includes(numeroVal)) return false;
         if (serieVal && !(item["N SERIE ACTUAL"] || "").toLowerCase().includes(serieVal)) return false;
-        
+
         // --- FILTROS SELECT (TIPO Y CAPACIDAD) ---
         if (tipoVal && (item["TIPO"] || "").toUpperCase().trim() !== tipoVal) return false;
         if (capVal && (item["CAP."] || "").toLowerCase().trim() !== capVal) return false;
@@ -1223,14 +1217,14 @@ function applyFilters() {
 
     // 4. Renderizar la tabla y actualizar contadores
     renderTable(currentFilteredData);
-    
+
     // El total mostrado depende de en qué pestaña esté el usuario
-    const totalTab = currentTab === 'descartados' 
-        ? misDatos.filter(i => i["CONDICION"] === 'Baja').length 
+    const totalTab = currentTab === 'descartados'
+        ? misDatos.filter(i => i["CONDICION"] === 'Baja').length
         : misDatos.filter(i => i["CONDICION"] !== 'Baja').length;
-        
+
     updateCounter(currentFilteredData.length, totalTab);
-    
+
     // 5. Actualizar KPIs y alertas
     actualizarTarjetasResumen();
     actualizarAlertaGarantias();
@@ -1243,7 +1237,7 @@ function renderTable(data) {
         tableBody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center; padding:24px; color:#94a3b8;">No hay resultados.</td></tr>`;
         return;
     }
-    
+
     [...data].sort(compararNumeros).forEach((item) => {
         const condicion = getCondicionItem(item);
         const estado = getEstadoItem(item);
@@ -1292,12 +1286,12 @@ function verHistorial() {
 function renderizarHistorial() {
     const historyBody = document.getElementById('history-body');
     historyBody.innerHTML = '';
-    
+
     if (historialCompleto.length === 0) {
         historyBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:#94a3b8;">No hay movimientos registrados.</td></tr>`;
         return;
     }
-    
+
     historialCompleto.forEach((mov, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1626,21 +1620,21 @@ const tipoSelect = document.getElementById('tipo-prestamo');
     document.getElementById('extintor-reemplazo').value = '';
     document.getElementById('motivo-select').value = 'Usado';
     document.getElementById('proxima-recarga').value = '';
-    
+
     document.getElementById('garantia-personal').value = '';
     document.getElementById('garantia-reemplazo').value = '';
-    
+
     document.getElementById('unidad-area').value = '';
     document.getElementById('unidad-responsable').value = '';
     document.getElementById('unidad-asignada').value = '';
     document.getElementById('unidad-reemplazo').value = '';
-    
+
     document.getElementById('traslado-motivo').value = 'Usado';
     document.getElementById('traslado-personal').value = '';
     document.getElementById('traslado-proxima-recarga').value = '';
 
      if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
- 
+
  // ✅ NUEVO: Si hay préstamo activo, forzar "garantia" y deshabilitar otras opciones
  if (tienePrestamoActivo) {
      tipoSelect.value = 'garantia';
@@ -1657,7 +1651,7 @@ const tipoSelect = document.getElementById('tipo-prestamo');
          opt.disabled = false;
      });
  }
- 
+
  toggleCamposPrestamo();
  loanModal.classList.add('active');
 }
@@ -1703,10 +1697,10 @@ async function confirmarTrasladoAlmacen() {
         const detalle = `Traslado a Almacén - Motivo: ${motivo} - Personal: ${personal}${proximaRecarga ? ' - Próx. recarga: ' + proximaRecarga : ''}`;
         const { data: movData, error: movError } = await supabaseClient.from(TABLA_MOVIMIENTOS).insert({
             n_extintor: no,
-            tipo: 'prestamo_interno', 
+            tipo: 'prestamo_interno',
             personal: personal,
             motivo: motivo,
-            reemplazo: null, 
+            reemplazo: null,
             responsable_destino: 'SST',
             ubicacion_destino: 'Mantenimiento / Almacén SST',
             detalle: detalle,
@@ -1935,7 +1929,7 @@ async function guardarPrestamoGarantia() {
     const areaResponsable = item["AREA RESPONSABLE"] || "";
     const debePonerPendiente = requierePendiente(areaResponsable);
     const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
-    
+
     const btns = loanModal.querySelectorAll('.modal-actions .btn');
     const saveBtn = btns[0];
     const textoOriginal = saveBtn.innerHTML;
@@ -2038,13 +2032,13 @@ async function marcarGarantiaRecibida(itemIndex) {
 
     try {
     const fecha = new Date().toLocaleString('es-ES');
-    
+
     // ✅ NUEVO: Solo cambiar estado si NO hay préstamo activo
     const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
-    const updateData = tienePrestamoActivo 
+    const updateData = tienePrestamoActivo
         ? {}  // No tocar el estado si tiene préstamo activo
         : { ESTADO: 'Garantía - Recibido' };
-    
+
     const [updateRes, insertRes] = await Promise.all([
         // Solo hacer update si hay cambios
         Object.keys(updateData).length > 0
@@ -2095,12 +2089,12 @@ async function guardarPrestamoUnidad() {
     const responsable = document.getElementById('unidad-responsable').value.trim();
     const unidad = document.getElementById('unidad-asignada').value.trim();
     const reemplazo = document.getElementById('unidad-reemplazo').value.trim(); // ✅ NUEVO
-    
+
     if (!area || !responsable || !unidad) {
         await showGenericModal('Por favor complete todos los campos (Área, Responsable y Ubicación/unidad asignada).', 'Aviso');
         return;
     }
-    
+
     const item = misDatos[currentItemIndex];
     const no = String(item["N"]);
     const estadoActual = item["ESTADO"] || "";
@@ -2108,17 +2102,17 @@ async function guardarPrestamoUnidad() {
         await showGenericModal('Este extintor ya tiene un préstamo activo.', 'Error');
         return;
     }
-    
+
     const btns = loanModal.querySelectorAll('.modal-actions .btn');
     const saveBtn = btns[0];
     const textoOriginal = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-    
+
     const fecha = new Date().toLocaleString('es-ES');
     const ubicacionTexto = unidad;
     const detalle = `Préstamo a unidad - Área: ${area} - Responsable: ${responsable} - Unidad: ${unidad}${reemplazo ? ' - Reemplazo: N° ' + reemplazo : ''}`;
-    
+
     try {
         const [updateRes, insertRes] = await Promise.all([
             supabaseClient
@@ -2140,10 +2134,10 @@ async function guardarPrestamoUnidad() {
                 .select()
                 .single()
         ]);
-        
+
         if (updateRes.error) throw new Error('Error al actualizar el extintor: ' + updateRes.error.message);
         if (insertRes.error) throw new Error('Error al registrar el movimiento: ' + insertRes.error.message);
-        
+
         const movInsertado = insertRes.data;
         const idx = misDatos.findIndex(it => String(it["N"]) === no);
         if (idx !== -1) {
@@ -2153,7 +2147,7 @@ async function guardarPrestamoUnidad() {
                 ESTADO: 'Prestado'
             };
         }
-        
+
         movimientosPrestamoActivos[no] = {
             tipo: 'prestamo_unidad',
             personal: responsable,
@@ -2164,7 +2158,7 @@ async function guardarPrestamoUnidad() {
             fecha: fecha
         };
         movimientosActivos[no] = movimientosPrestamoActivos[no];
-        
+
         historialCompleto.unshift({
             id: movInsertado ? movInsertado.id : undefined,
             fecha: fecha,
@@ -2173,10 +2167,10 @@ async function guardarPrestamoUnidad() {
             personal: responsable,
             detalle: detalle
         });
-        
+
         // ✅ Limpiar el nuevo campo al cerrar
         document.getElementById('unidad-reemplazo').value = '';
-        
+
         closeLoanModal();
         applyFilters();
         await showGenericModal('Préstamo a unidad registrado correctamente.', 'Éxito');
@@ -2285,14 +2279,14 @@ async function finalizarGarantia(itemIndex) {
 
     try {
     const nuevaFecha = fechaLimpia;
-    
+
     // ✅ NUEVO: Si hay préstamo activo, solo actualizar F. VENC.
     // Si no hay préstamo, limpiar estado y próxima_recarga (comportamiento actual)
     const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
     const updateData = tienePrestamoActivo
         ? { "F. VENC.": nuevaFecha }
         : { "F. VENC.": nuevaFecha, ESTADO: null, proxima_recarga: null };
-    
+
     const [updateExtintor, desactivarMov] = await Promise.all([
         supabaseClient
             .from(TABLA_EXTINTORES)
@@ -2896,7 +2890,7 @@ async function abrirBaja() {
             const idx = misDatos.findIndex(x => String(x.N) === no);
             if (idx !== -1) misDatos[idx] = { ...misDatos[idx], ...updateData };
 
-            applyFilters(); 
+            applyFilters();
             await showGenericModal('Extintor descartado. Sube el certificado en "Extintores descartados".', 'Éxito');
         } catch (err) {
             console.error(err);
@@ -2913,7 +2907,7 @@ function verDescartados() {
     const descartados = misDatos.filter(item => item["CONDICION"] === 'Baja');
     const body = document.getElementById('descartados-body');
     body.innerHTML = '';
-    
+
     if (descartados.length === 0) {
         body.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No hay extintores descartados.</td></tr>`;
     } else {
@@ -2921,12 +2915,12 @@ function verDescartados() {
             const idx = misDatos.indexOf(item);
             const tieneEvidencia = item["evidencia"] && item["evidencia"].trim() !== "";
             const linkEvidencia = tieneEvidencia ? `<a href="${item["evidencia"]}" target="_blank" style="color:#3b82f6;text-decoration:underline;">Ver Certificado</a>` : `<span style="color:#ef4444; font-size:0.85rem;">Falta subir</span>`;
-            
+
             // Limpiamos el texto: quitamos las URLs y cortamos si es muy largo
             let obs = item["observaciones"] || '-';
             obs = obs.replace(/https?:\/\/[^\s]+/g, '').replace(/Evidencia:/gi, '').trim();
             if (obs.length > 80) obs = obs.substring(0, 80) + '...';
-            
+
             body.innerHTML += `
                 <tr>
                     <td><strong>${item["N"]}</strong></td>
@@ -2966,15 +2960,15 @@ async function guardarEditarDescartado() {
     const no = String(item["N"]);
     const motivo = document.getElementById('descarte-motivo').value.trim();
     const archivo = document.getElementById('descarte-archivo').files[0];
-    
+
     const btn = document.querySelector('#editar-descartado-modal .btn-primary');
     const txtOrig = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-    
+
     try {
         let evidenciaUrl = item["evidencia"] || null;
-        
+
         if (archivo) {
             const fileExt = (archivo.name.split('.').pop() || 'bin').toLowerCase();
             const fileName = `baja_${no}_${Date.now()}.${fileExt}`;
@@ -2983,21 +2977,21 @@ async function guardarEditarDescartado() {
             const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(`bajas/${fileName}`);
             evidenciaUrl = urlData?.publicUrl || null;
         }
-        
+
         const updateData = {
             observaciones: motivo,
             evidencia: evidenciaUrl || ''
         };
-        
+
         const { error } = await supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no);
         if (error) throw error;
-        
+
         misDatos[descartadoIndex] = { ...misDatos[descartadoIndex], ...updateData };
-        
+
         closeEditarDescartadoModal();
         verDescartados();
         await showGenericModal('Datos actualizados correctamente.', 'Éxito');
-        
+
     } catch (err) {
         console.error(err);
         await showGenericModal('Error al guardar: ' + err.message, 'Error');
@@ -3006,207 +3000,6 @@ async function guardarEditarDescartado() {
         btn.innerHTML = txtOrig;
     }
 }
-function abrirNuevoReemplazo() {
-    if (!isAdmin || currentItemIndex === null) return;
-    const item = misDatos[currentItemIndex];
-    const container = document.getElementById('nuevo-reemplazo-body');
-    container.innerHTML = '';
-    const camposNuevo = ['N', 'N SERIE ACTUAL', 'TIPO', 'CAP.', 'costo_recarga', 'zona', 'gerencia', 'AREA RESPONSABLE', 'UBICACION', 'ph_vencimiento', 'F. VENC.', 'fecha_fabricacion', 'proveedor', 'anterior_ubicacion', 'vigencia_actual'];
-    const valoresDefault = { 'AREA RESPONSABLE': item["AREA RESPONSABLE"] || '', 'UBICACION': item["UBICACION"] || '', 'zona': item["zona"] || '', 'gerencia': item["gerencia"] || '', 'TIPO': item["TIPO"] || '', 'CAP.': item["CAP."] || '', 'vigencia_actual': 'Vigente' };
-    camposNuevo.forEach(clave => {
-        const campo = document.createElement('div');
-        campo.className = 'editor-field';
-        const label = document.createElement('label');
-        label.textContent = nombresMostrar[clave] || clave;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = valoresDefault[clave] || '';
-        input.dataset.key = clave;
-        campo.appendChild(label);
-        campo.appendChild(input);
-        container.appendChild(campo);
-    });
-    nuevoReemplazoData.originalItem = item;
-    closeEditorModal();
-    document.getElementById('nuevo-reemplazo-modal').classList.add('active');
-}
-function closeNuevoReemplazoModal() { document.getElementById('nuevo-reemplazo-modal').classList.remove('active'); nuevoReemplazoData = {}; }
-
-async function confirmarNuevoReemplazo() {
-    if (!isAdmin || !nuevoReemplazoData.originalItem) return;
-    const original = nuevoReemplazoData.originalItem;
-    const noOriginal = String(original["N"]);
-    const nuevo = {};
-    const campos = document.querySelectorAll('#nuevo-reemplazo-body [data-key]');
-    let numeroNuevo = '';
-    campos.forEach(campo => {
-        const clave = campo.dataset.key;
-        const valor = campo.value.trim();
-        if (clave === 'N') numeroNuevo = valor;
-        nuevo[clave] = valor;
-    });
-    if (!numeroNuevo) { await showGenericModal('El número del nuevo extintor es obligatorio.', 'Aviso'); return; }
-
-    const { data: existente } = await supabaseClient
-        .from(TABLA_EXTINTORES)
-        .select('N, CONDICION, observaciones')
-        .eq('N', numeroNuevo)
-        .maybeSingle();
-
-        if (existente) {
-        if (existente.CONDICION === 'Baja') {
-            // Renombrado silencioso sin preguntar
-            const sufijo = `-BAJA-${new Date().toISOString().slice(0, 10)}`;
-            const nombreViejo = `${numeroNuevo}${sufijo}`;
-
-            await supabaseClient.from(TABLA_EXTINTORES).update({ N: nombreViejo }).eq('N', numeroNuevo);
-            await Promise.all([
-                supabaseClient.from(TABLA_MOVIMIENTOS).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo),
-                supabaseClient.from(TABLA_OBSERVACIONES).update({ n_extintor: nombreViejo }).eq('n_extintor', numeroNuevo)
-            ]);
-
-            if (extintorBajaOrigen) {
-                extintorBajaOrigen.N = nombreViejo;
-            }
-        } else {
-            await showGenericModal(
-                `El número "${numeroNuevo}" ya está ocupado por un extintor activo ` +
-                `(condición: ${existente.CONDICION || 'Vigente'}). Usa otro número.`,
-                'Número duplicado',
-                'Entendido'
-            );
-            return;
-        }
-    }
-    nuevo['CONDICION'] = 'Vigente';
-    nuevo['ESTADO'] = 'Prestado';
-    nuevo['ubicacion_prestamo'] = `Préstamo a: ${original["AREA RESPONSABLE"] || 'Sin responsable'} | Reemplaza al N ${noOriginal}`;
-    nuevo['observaciones'] = `Creado como reemplazo del extintor ${noOriginal}`;
-    Object.keys(nuevo).forEach(k => { if (nuevo[k] === '') nuevo[k] = null; });
-
-    const { data: insertData, error: insertErr } = await supabaseClient
-        .from(TABLA_EXTINTORES)
-        .insert([nuevo])
-        .select()
-        .single();
-
-    if (insertErr) {
-        console.error(insertErr);
-        await showGenericModal('Error al crear el nuevo extintor: ' + insertErr.message, 'Error');
-        return;
-    }
-
-    const updateOriginal = {
-        ubicacion_prestamo: 'Mantenimiento / Almacén SST',
-        CONDICION: 'Reemplazado',
-        ESTADO: 'Almacén SST',
-        observaciones: (original["observaciones"] || '') + `\nReemplazado por nuevo extintor N° ${numeroNuevo}`
-    };
-
-    const detalleOriginal = `Extintor ${noOriginal} reemplazado por nuevo extintor ${numeroNuevo}`;
-    const detalleNuevo = `Nuevo extintor ${numeroNuevo} creado para reemplazar a ${noOriginal}`;
-    const responsableOriginal = original["AREA RESPONSABLE"] || 'Sin responsable';
-
-    const [updRes, movRes] = await Promise.all([
-        supabaseClient.from(TABLA_EXTINTORES).update(updateOriginal).eq('N', noOriginal),
-        supabaseClient.from(TABLA_MOVIMIENTOS).insert([
-            {
-                n_extintor: noOriginal,
-                tipo: 'prestamo_interno',
-                personal: 'Sistema',
-                motivo: 'Reemplazado',
-                reemplazo: numeroNuevo,
-                responsable_destino: 'Almacén SST',
-                ubicacion_destino: 'Mantenimiento / Almacén SST',
-                detalle: detalleOriginal,
-                activo: true
-            },
-            {
-                n_extintor: numeroNuevo,
-                tipo: 'prestamo_interno',
-                personal: 'Sistema',
-                motivo: 'Reemplazo',
-                reemplazo: noOriginal,
-                responsable_destino: responsableOriginal,
-                ubicacion_destino: `Préstamo a: ${responsableOriginal} | Reemplaza al N ${noOriginal}`,
-                detalle: detalleNuevo,
-                activo: true
-            }
-        ]).select()
-    ]);
-
-    if (updRes.error) {
-        console.error(updRes.error);
-        await showGenericModal('Error al actualizar el extintor original: ' + updRes.error.message, 'Error');
-        return;
-    }
-    if (movRes.error) {
-        console.error(movRes.error);
-        await showGenericModal('Error al registrar movimientos: ' + movRes.error.message, 'Error');
-        return;
-    }
-
-    const idxOriginal = misDatos.findIndex(x => String(x.N) === noOriginal);
-    if (idxOriginal !== -1) {
-        misDatos[idxOriginal] = { ...misDatos[idxOriginal], ...updateOriginal };
-    }
-    if (insertData) {
-        misDatos.push(insertData);
-        misDatos.sort(compararNumeros);
-    }
-
-    const fecha = new Date().toLocaleString('es-ES');
-
-    movimientosPrestamoActivos[noOriginal] = {
-        tipo: 'prestamo_interno',
-        personal: 'Sistema',
-        motivo: 'Reemplazado',
-        reemplazo: numeroNuevo,
-        responsable_destino: 'Almacén SST',
-        ubicacion_destino: 'Mantenimiento / Almacén SST',
-        fecha: fecha
-    };
-    movimientosActivos[noOriginal] = movimientosPrestamoActivos[noOriginal];
-
-    movimientosPrestamoActivos[numeroNuevo] = {
-        tipo: 'prestamo_interno',
-        personal: 'Sistema',
-        motivo: 'Reemplazo',
-        reemplazo: noOriginal,
-        responsable_destino: responsableOriginal,
-        ubicacion_destino: `Préstamo a: ${responsableOriginal} | Reemplaza al N ${noOriginal}`,
-        fecha: fecha
-    };
-    movimientosActivos[numeroNuevo] = movimientosPrestamoActivos[numeroNuevo];
-
-    const movsInsertados = movRes.data || [];
-    historialCompleto.unshift(
-        {
-            id: movsInsertados[1]?.id,
-            fecha: fecha,
-            no: numeroNuevo,
-            tipo: 'Nuevo reemplazo',
-            personal: 'Sistema',
-            detalle: detalleNuevo
-        },
-        {
-            id: movsInsertados[0]?.id,
-            fecha: fecha,
-            no: noOriginal,
-            tipo: 'Reemplazo por nuevo',
-            personal: 'Sistema',
-            detalle: detalleOriginal
-        }
-    );
-
-    closeNuevoReemplazoModal();
-    poblarResponsables();
-    applyFilters();
-
-    await showGenericModal(`Nuevo extintor ${numeroNuevo} creado y reemplazo registrado.`, 'Éxito');
-}
-
 // ============================================================
 //  INICIO DE LA APP
 // ============================================================
@@ -3277,8 +3070,8 @@ async function iniciarApp() {
     personal: mov.personal || '-',
     detalle: mov.detalle || ''
 }));
-    
-    actualizarFiltrosDesdeDB(); 
+
+    actualizarFiltrosDesdeDB();
     poblarResponsables();
     inicializarAutocompletes();
     renderCalendar();
@@ -3312,7 +3105,6 @@ function obtenerFuncionCerrar(modal) {
         'prompt-modal': closePromptModal,
         'descartados-modal': closeDescartadosModal,
         'editar-descartado-modal': closeEditarDescartadoModal,
-        'nuevo-reemplazo-modal': closeNuevoReemplazoModal,
         'garantias-pendientes-modal': closeGarantiasPendientesModal
     };
     return mapa[modal.id] || null;
@@ -3381,12 +3173,6 @@ const originalAbrirEditar = abrirEditarDescartado;
 abrirEditarDescartado = function(index) {
     originalAbrirEditar(index);
     registrarModal(document.getElementById('editar-descartado-modal'));
-};
-
-const originalAbrirReemplazo = abrirNuevoReemplazo;
-abrirNuevoReemplazo = function() {
-    originalAbrirReemplazo();
-    registrarModal(document.getElementById('nuevo-reemplazo-modal'));
 };
 
 const originalVerGarantias = verGarantiasPendientes;
@@ -3468,12 +3254,6 @@ const originalCloseEditDesc = closeEditarDescartadoModal;
 closeEditarDescartadoModal = function() {
     originalCloseEditDesc();
     quitarModal(document.getElementById('editar-descartado-modal'));
-};
-
-const originalCloseReemp = closeNuevoReemplazoModal;
-closeNuevoReemplazoModal = function() {
-    originalCloseReemp();
-    quitarModal(document.getElementById('nuevo-reemplazo-modal'));
 };
 
 const originalCloseGar = closeGarantiasPendientesModal;
