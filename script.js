@@ -43,6 +43,16 @@ const BUCKET_NAME = 'Extintores';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TABLA_USUARIOS = 'usuarios';
+const AREAS_CON_PENDIENTE = [
+    'transporte', 'operaciones agrícolas', 'ing. agrícola', 'fitosanidad',
+    'cosecha', 'control de maleza', 'agronomía',
+    'administración 1', 'administración 2', 'administración 3'
+];
+
+function requierePendiente(areaResponsable) {
+    const area = String(areaResponsable || '').trim().toLowerCase();
+    return AREAS_CON_PENDIENTE.some(a => area.includes(a));
+}
 let isAdmin = sessionStorage.getItem('extintor_admin') === 'true';
 
 // ============================================================
@@ -388,7 +398,13 @@ function showGenericModal(message, title = 'Aviso', confirmText = 'Aceptar', can
         modal.classList.add('active');
     });
 }
-function confirmGenericModal() { document.getElementById('generic-modal').classList.remove('active'); closeGenericModal(); if (genericResolve) genericResolve(true); genericResolve = null; }
+function confirmGenericModal() {
+    document.getElementById('generic-modal').classList.remove('active');
+    const resolver = genericResolve;
+    genericResolve = null;
+    quitarModal(document.getElementById('generic-modal'));
+    if (resolver) resolver(true);
+}
 function cancelGenericModal() { document.getElementById('generic-modal').classList.remove('active');  closeGenericModal(); if (genericResolve) genericResolve(false); genericResolve = null; }
 function closeGenericModal() { document.getElementById('generic-modal').classList.remove('active'); if (genericResolve) genericResolve(false); genericResolve = null; }
 
@@ -422,7 +438,6 @@ function actualizarMenuAdmin() {
     // Botones que agregaremos en el siguiente paso
     const btnAgregarExtintor = document.getElementById('btnAgregarExtintor');
     const menuDescartados = document.getElementById('menuDescartados'); 
-
     if (isAdmin) {
         const nombreAdmin = sessionStorage.getItem('extintor_admin_nombre') || 'Administrador';
         const rolAdmin = sessionStorage.getItem('extintor_admin_rol') || 'admin';
@@ -441,7 +456,6 @@ function actualizarMenuAdmin() {
         
         if (btnAgregarExtintor) btnAgregarExtintor.style.display = 'inline-flex';
         if (menuDescartados) menuDescartados.style.display = 'inline-flex';
-
     } else {
         // Estado público (Sin loguear)
         if (btnLogin) {
@@ -1499,29 +1513,34 @@ ${item["proxima_recarga"] && String(item["proxima_recarga"]).trim() !== "" ? `<d
         botonesAccion += `<button class="btn btn-primary" style="background:#059669;color:white;" onclick="abrirFormularioObservacion(${currentItemIndex})"><i class="fas fa-pen"></i> Registrar Observación</button>`;
     }
     const esBaja = (item["CONDICION"] === "Baja");
-
-    if (isAdmin) {
-        if (esBaja) {
-            botonesAccion += `<button class="btn btn-success" onclick="abrirNuevoExtintor()"><i class="fas fa-plus"></i> Registrar nuevo extintor</button>`;
-        } else {
-            if (!prestamoActivo) {
-    botonesAccion += `<button class="btn btn-primary" onclick="openLoanForm(${currentItemIndex})"><i class="fas fa-exchange-alt"></i> Registrar movimiento</button>`;
-}
-            if (prestamoActivo) {
-                botonesAccion += `<button class="btn btn-primary" onclick="finalizarPrestamo(${currentItemIndex})"><i class="fas fa-check-circle"></i> Finalizar Préstamo</button>`;
+if (isAdmin) {
+    if (esBaja) {
+        botonesAccion += `<button class="btn btn-success" onclick="abrirNuevoExtintor()"><i class="fas fa-plus"></i> Registrar nuevo extintor</button>`;
+    } else {
+        if (!garantiaActiva) {
+            botonesAccion += `<button class="btn btn-primary" onclick="openLoanForm(${currentItemIndex})"><i class="fas fa-exchange-alt"></i> Registrar movimiento</button>`;
+        }
+        if (prestamoActivo) {
+            botonesAccion += `<button class="btn btn-primary" onclick="finalizarPrestamo(${currentItemIndex})"><i class="fas fa-check-circle"></i> Finalizar Préstamo</button>`;
+        }
+        if (garantiaActiva) {
+            const areaResponsable = item["AREA RESPONSABLE"] || "";
+            const esAreaPendiente = requierePendiente(areaResponsable);
+            const estadoPendiente = item["ESTADO"] === 'Extintor pendiente';
+            const puedeFinalizar = !esAreaPendiente || !estadoPendiente;
+            if (estadoPendiente) {
+                botonesAccion += `<button class="btn btn-warning" onclick="marcarGarantiaRecibida(${currentItemIndex})"><i class="fas fa-truck"></i> Confirmar llegada a mantenimiento</button>`;
             }
-            if (garantiaActiva) {
-                if (item["ESTADO"] === 'Extintor pendiente') {
-                    botonesAccion += `<button class="btn btn-warning" onclick="marcarGarantiaRecibida(${currentItemIndex})"><i class="fas fa-truck"></i> Confirmar llegada a mantenimiento</button>`;
-                }
+            if (puedeFinalizar) {
                 botonesAccion += `<button class="btn btn-success" onclick="finalizarGarantia(${currentItemIndex})"><i class="fas fa-check-circle"></i> Finalizar Garantía</button>`;
             }
-            botonesAccion += `<button class="btn" style="background:#7c3aed;color:white;" onclick="abrirEditor(${currentItemIndex})"><i class="fas fa-edit"></i> Editar registro</button>`;
         }
+        botonesAccion += `<button class="btn" style="background:#7c3aed;color:white;" onclick="abrirEditor(${currentItemIndex})"><i class="fas fa-edit"></i> Editar registro</button>`;
     }
-    botonesAccion += `<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>`;
-    modalActions.innerHTML = botonesAccion;
-    detailModal.classList.add('active');
+}
+botonesAccion += `<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>`;
+modalActions.innerHTML = botonesAccion;
+detailModal.classList.add('active');
 }
 function closeModal() { detailModal.classList.remove('active'); }
 
@@ -1529,11 +1548,17 @@ function closeModal() { detailModal.classList.remove('active'); }
 //  PRÉSTAMO Y FUNCIONES RELACIONADAS
 // ============================================================
 function openLoanForm(itemIndex) {
-    currentItemIndex = itemIndex;
-    closeModal();
-    
-    // Limpiar todos los campos
-    document.getElementById('personal-cambio').value = '';
+currentItemIndex = itemIndex;
+closeModal();
+
+// ✅ NUEVO: Si hay préstamo activo, solo permitir "garantia"
+const item = misDatos[itemIndex];
+const no = String(item["N"]);
+const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
+const tipoSelect = document.getElementById('tipo-prestamo');
+
+// Limpiar todos los campos
+ document.getElementById('personal-cambio').value = '';
     document.getElementById('extintor-reemplazo').value = '';
     document.getElementById('motivo-select').value = 'Usado';
     document.getElementById('proxima-recarga').value = '';
@@ -1550,11 +1575,27 @@ function openLoanForm(itemIndex) {
     document.getElementById('traslado-personal').value = '';
     document.getElementById('traslado-proxima-recarga').value = '';
 
-    if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
-    
-    document.getElementById('tipo-prestamo').value = 'unidad';
-    toggleCamposPrestamo();
-    loanModal.classList.add('active');
+     if (unidadAreaAutocomplete) unidadAreaAutocomplete.refrescar();
+ 
+ // ✅ NUEVO: Si hay préstamo activo, forzar "garantia" y deshabilitar otras opciones
+ if (tienePrestamoActivo) {
+     tipoSelect.value = 'garantia';
+     // Deshabilitar opciones que no sean garantía
+     Array.from(tipoSelect.options).forEach(opt => {
+         if (opt.value !== 'garantia') {
+             opt.disabled = true;
+         }
+     });
+ } else {
+     tipoSelect.value = 'unidad';
+     // Habilitar todas las opciones
+     Array.from(tipoSelect.options).forEach(opt => {
+         opt.disabled = false;
+     });
+ }
+ 
+ toggleCamposPrestamo();
+ loanModal.classList.add('active');
 }
 
 function closeLoanModal() {
@@ -1827,7 +1868,10 @@ async function guardarPrestamoGarantia() {
         await showGenericModal('Este extintor ya tiene una garantía activa.', 'Error');
         return;
     }
-
+    const areaResponsable = item["AREA RESPONSABLE"] || "";
+    const debePonerPendiente = requierePendiente(areaResponsable);
+    const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
+    
     const btns = loanModal.querySelectorAll('.modal-actions .btn');
     const saveBtn = btns[0];
     const textoOriginal = saveBtn.innerHTML;
@@ -1836,8 +1880,11 @@ async function guardarPrestamoGarantia() {
 
     try {
         const detalle = `Garantía - Personal: ${personal} - Extintor reemplazo: ${reemplazo}`;
-        const updateEstado = { ESTADO: 'Extintor pendiente' };
         const fecha = new Date().toLocaleString('es-ES');
+
+      const updateEstado = debePonerPendiente && !tienePrestamoActivo
+         ? { ESTADO: 'Extintor pendiente' }
+        : {};
 
         const [movRes, updRes] = await Promise.all([
             supabaseClient
@@ -1926,11 +1973,19 @@ async function marcarGarantiaRecibida(itemIndex) {
     allBtns.forEach(b => b.disabled = true);
 
     try {
-        const fecha = new Date().toLocaleString('es-ES');
-        const updateData = { ESTADO: 'Garantía - Recibido' };
-
-        const [updateRes, insertRes] = await Promise.all([
-            supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no),
+    const fecha = new Date().toLocaleString('es-ES');
+    
+    // ✅ NUEVO: Solo cambiar estado si NO hay préstamo activo
+    const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
+    const updateData = tienePrestamoActivo 
+        ? {}  // No tocar el estado si tiene préstamo activo
+        : { ESTADO: 'Garantía - Recibido' };
+    
+    const [updateRes, insertRes] = await Promise.all([
+        // Solo hacer update si hay cambios
+        Object.keys(updateData).length > 0
+            ? supabaseClient.from(TABLA_EXTINTORES).update(updateData).eq('N', no)
+            : Promise.resolve({ error: null }),
             supabaseClient.from(TABLA_MOVIMIENTOS).insert({
                 n_extintor: no,
                 tipo: 'garantia_retiro',
@@ -1943,9 +1998,11 @@ async function marcarGarantiaRecibida(itemIndex) {
         if (updateRes.error) throw updateRes.error;
 
         const movInsertado = insertRes.data;
-
         const idx = misDatos.findIndex(it => String(it["N"]) === no);
-        if (idx !== -1) misDatos[idx] = { ...misDatos[idx], ...updateData };
+       // ✅ NUEVO: Solo actualizar misDatos si hubo cambios en el estado
+       if (idx !== -1 && Object.keys(updateData).length > 0) {
+       misDatos[idx] = { ...misDatos[idx], ...updateData };
+        }
 
         historialCompleto.unshift({
             id: movInsertado?.id,
@@ -2163,44 +2220,58 @@ async function finalizarGarantia(itemIndex) {
     });
 
     try {
-        const nuevaFecha = fechaLimpia;
-
-        const [updateExtintor, desactivarMov] = await Promise.all([
-            supabaseClient
-                .from(TABLA_EXTINTORES)
-                .update({
-                    "F. VENC.": nuevaFecha,
-                    ESTADO: null,
-                    proxima_recarga: null
-                })
-                .eq('N', no),
-            supabaseClient
-                .from(TABLA_MOVIMIENTOS)
-                .update({ activo: false })
-                .eq('n_extintor', no)
-                .eq('tipo', 'garantia')
-                .eq('activo', true)
-        ]);
+    const nuevaFecha = fechaLimpia;
+    
+    // ✅ NUEVO: Si hay préstamo activo, solo actualizar F. VENC.
+    // Si no hay préstamo, limpiar estado y próxima_recarga (comportamiento actual)
+    const tienePrestamoActivo = !!movimientosPrestamoActivos[no];
+    const updateData = tienePrestamoActivo
+        ? { "F. VENC.": nuevaFecha }
+        : { "F. VENC.": nuevaFecha, ESTADO: null, proxima_recarga: null };
+    
+    const [updateExtintor, desactivarMov] = await Promise.all([
+        supabaseClient
+            .from(TABLA_EXTINTORES)
+            .update(updateData)
+            .eq('N', no),
+        supabaseClient
+            .from(TABLA_MOVIMIENTOS)
+            .update({ activo: false })
+            .eq('n_extintor', no)
+            .eq('tipo', 'garantia')
+            .eq('activo', true)
+    ]);
 
         if (updateExtintor.error) throw updateExtintor.error;
         if (desactivarMov.error) throw desactivarMov.error;
 
         await actualizarUnExtintor(no);
-        delete movimientosGarantiaActivos[no];
-        delete movimientosActivos[no];
+delete movimientosGarantiaActivos[no];
 
-        historialCompleto.push({
-            fecha: new Date().toLocaleString('es-ES'),
-            no: no,
-            tipo: 'Garantía finalizada',
-            personal: 'Sistema',
-            detalle: `Garantía finalizada - Nuevo vencimiento: ${nuevaFecha}`
-        });
+// ✅ NUEVO: Solo borrar movimientosActivos si NO hay préstamo activo
+// Si hay préstamo, debe seguir vivo porque el préstamo sigue activo
+if (!tienePrestamoActivo) {
+    delete movimientosActivos[no];
+}
+
+const detalleHistorial = tienePrestamoActivo
+    ? `Garantía finalizada - Nuevo vencimiento: ${nuevaFecha} (Préstamo a ubicación se mantiene activo)`
+    : `Garantía finalizada - Nuevo vencimiento: ${nuevaFecha}`;
+
+historialCompleto.push({
+    fecha: new Date().toLocaleString('es-ES'),
+    no: no,
+    tipo: 'Garantía finalizada',
+    personal: 'Sistema',
+    detalle: detalleHistorial
+});
 
         closeModal();
-        applyFilters();
-
-        await showGenericModal(`Garantía finalizada. Nuevo vencimiento: ${nuevaFecha}`, 'Éxito');
+applyFilters();
+const mensajeExito = tienePrestamoActivo
+    ? `Garantía finalizada. Nuevo vencimiento: ${nuevaFecha}. El préstamo a ubicación/unidad se mantiene activo.`
+    : `Garantía finalizada. Nuevo vencimiento: ${nuevaFecha}`;
+await showGenericModal(mensajeExito, 'Éxito');
 
     } catch (err) {
         console.error(err);
