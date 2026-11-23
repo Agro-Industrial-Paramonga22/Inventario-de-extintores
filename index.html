@@ -384,22 +384,6 @@
     </div>
 </div>
 
-<!-- Nuevo reemplazo -->
-<div id="nuevo-reemplazo-modal" class="modal">
-    <div class="modal-content" style="max-width:800px;">
-        <div class="modal-header">
-            <h2><i class="fas fa-exchange-alt" style="color:#059669;"></i> Registrar nuevo extintor de reemplazo</h2>
-            <button class="modal-close" onclick="closeNuevoReemplazoModal()">&times;</button>
-        </div>
-        <p style="color:#64748b; font-size:0.9rem;">Complete todos los datos del nuevo extintor. Al guardar, el extintor actual pasará a almacén con motivo "Reemplazado" y el nuevo extintor tomará su lugar en préstamo.</p>
-        <div id="nuevo-reemplazo-body" class="editor-grid"></div>
-        <div class="modal-actions">
-            <button class="btn btn-success" onclick="confirmarNuevoReemplazo()"><i class="fas fa-save"></i> Crear y reemplazar</button>
-            <button class="btn btn-secondary" onclick="closeNuevoReemplazoModal()">Cancelar</button>
-        </div>
-    </div>
-</div>
-
 <!-- Préstamo / Movimiento -->
 <div id="loan-modal" class="modal">
     <div class="modal-content">
@@ -505,28 +489,28 @@
 </div>
 <!-- Historial -->
 <div id="history-modal" class="modal">
-    <div class="modal-content" style="max-width:900px;">
-        <div class="modal-header">
-            <h2><i class="fas fa-history" style="color:#3b82f6;"></i> Historial de Movimientos</h2>
-            <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
+    <div class="modal-content modal-compact">
+        <div class="modal-header-compact">
+            <h2><i class="fas fa-history"></i> Historial de Movimientos</h2>
+            <button class="modal-close-x" onclick="closeHistoryModal()">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div class="scroll-x">
-            <table>
-                <thead style="background:#f1f5f9;">
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>N Extintor</th>
-                        <th>Tipo</th>
-                        <th>Personal</th>
-                        <th>Detalle</th>
-                        <th style="width:80px;">Acción</th>
+                        <th style="width: 15%;">Fecha</th>
+                        <th style="width: 10%;">Extintor</th>
+                        <th style="width: 15%;">Tipo</th>
+                        <th style="width: 15%;">Personal</th>
+                        <th style="width: 35%;">Detalle</th>
+                        <th style="width: 10%;">Acción</th>
                     </tr>
                 </thead>
-                <tbody id="history-body"></tbody>
+                <tbody id="history-body">
+                </tbody>
             </table>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeHistoryModal()">Cerrar</button>
         </div>
     </div>
 </div>

@@ -36,6 +36,64 @@
 // ============================================================
 const SUPABASE_URL = 'https://wlbwrjsbwxcullsaclon.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_iU6UHYMHkKG9fHI24342Jw_G7E0-S08';
+
+// Función para quitar la hora de la fecha
+function formatearFecha(fecha) {
+    return new Date(fecha).toLocaleDateString('es-ES');
+}
+
+// Función para estandarizar los nombres de los movimientos
+function getTipoLabel(tipo) {
+    const labels = {
+        'prestamo_interno': 'Préstamo interno',
+        'prestamo_unidad': 'Préstamo a unidad',
+        'garantia': 'Envío a garantía',
+        'garantia_retiro': 'Retiro de garantía',
+        'reemplazo_baja': 'Reemplazo de baja',
+        'Nuevo reemplazo': 'Nuevo reemplazo',
+        'Reemplazo por nuevo': 'Reemplazo por nuevo',
+        'Retorno': 'Préstamo finalizado',
+        'Garantía finalizada': 'Garantía finalizada',
+        'Traslado a Almacén': 'Traslado a almacén'
+    };
+    return labels[tipo] || tipo;
+}
+
+// Función para limpiar detalles antiguos y eliminar redundancia
+function limpiarDetalle(detalle, tipo, personal) {
+    if (!detalle) return '-';
+    
+    let limpio = detalle;
+    
+    // Eliminar el tipo al inicio
+    const tipoLabel = getTipoLabel(tipo);
+    if (limpio.startsWith(tipoLabel + ' - ')) {
+        limpio = limpio.substring(tipoLabel.length + 3);
+    } else if (limpio.startsWith(tipo + ' - ')) {
+        limpio = limpio.substring(tipo.length + 3);
+    }
+    
+    // Eliminar "Personal: X - "
+    if (personal && personal !== '-') {
+        const patronPersonal = new RegExp(`Personal:\\s*${personal}\\s*-\\s*`, 'i');
+        limpio = limpio.replace(patronPersonal, '');
+    } else {
+        limpio = limpio.replace(/Personal:\s*[^-]*-\s*/i, '');
+    }
+    
+    // Eliminar prefijos redundantes
+    limpio = limpio.replace(/^Extintor\s+\S+\s+reportado\s+como\s+/i, 'Reportado como ');
+    limpio = limpio.replace(/^Extintor\s+\S+\s+\(STOCK\)\s+enviado\s+a\s+/i, '(STOCK) enviado a ');
+    limpio = limpio.replace(/^Nuevo\s+extintor\s+N°\s+\S+\s+creado\s+como\s+/i, 'Creado como ');
+    limpio = limpio.replace(/^Extintor\s+\S+\s+reemplazado\s+por\s+/i, 'Reemplazado por ');
+    limpio = limpio.replace(/^Nuevo\s+extintor\s+\S+\s+creado\s+para\s+/i, 'Creado para ');
+    limpio = limpio.replace(/^Garantía\s+finalizada\s*-\s*/i, '');
+    limpio = limpio.replace(/^Préstamo\s+finalizado/i, 'Finalizado');
+    limpio = limpio.replace(/^Traslado\s+a\s+Almacén\s*-\s*/i, '');
+    limpio = limpio.replace(/^Extintor\s+\S+\s+retirado\s+del\s+área/i, 'Retirado del área');
+    
+    return limpio.trim() || '-';
+}
 const TABLA_EXTINTORES = 'Extintores_Prueba';
 const TABLA_OBSERVACIONES = 'observaciones_prueba';
 const TABLA_MOVIMIENTOS = 'movimientos_prueba';
@@ -1234,19 +1292,25 @@ function verHistorial() {
 function renderizarHistorial() {
     const historyBody = document.getElementById('history-body');
     historyBody.innerHTML = '';
+    
     if (historialCompleto.length === 0) {
-        historyBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8;">No hay movimientos registrados.</td></tr>`;
+        historyBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:#94a3b8;">No hay movimientos registrados.</td></tr>`;
         return;
     }
+    
     historialCompleto.forEach((mov, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${mov.fecha}</td>
             <td><strong>${mov.no}</strong></td>
-            <td>${mov.tipo}</td>
+            <td>${getTipoLabel(mov.tipo)}</td>
             <td>${mov.personal}</td>
-            <td>${mov.detalle}</td>
-            <td><button class="btn btn-delete" style="padding:4px 10px; font-size:0.75rem;" onclick="eliminarMovimiento(${index})"><i class="fas fa-trash-alt"></i> Eliminar</button></td>
+            <td title="${mov.detalle}">${limpiarDetalle(mov.detalle, mov.tipo, mov.personal)}</td>
+            <td>
+                <button class="btn btn-delete" onclick="eliminarMovimiento(${index})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
         `;
         historyBody.appendChild(row);
     });
@@ -1428,7 +1492,7 @@ function exportarExcel() {
     html += `</tbody></table><br><br>`;
     html += `<h3 style="color:#3b82f6;">Historial de Movimientos</h3><table border="1" style="font-size:12px;"><thead><tr style="background:#0f172a;color:#fff;"><th>Fecha</th><th>N Extintor</th><th>Tipo</th><th>Personal</th><th>Detalle</th></tr></thead><tbody>`;
     if (historialCompleto.length === 0) html += `<tr><td colspan="5" style="text-align:center;">No hay movimientos.</td></tr>`;
-    else historialCompleto.forEach(m => { html += `<tr><td>${limpiar(m.fecha)}</td><td>${limpiar(m.no)}</td><td>${limpiar(m.tipo)}</td><td>${limpiar(m.personal)}</td><td>${limpiar(m.detalle)}</td></tr>`; });
+    else historialCompleto.forEach(m => { html += `<tr><td>${limpiar(m.fecha)}</td><td>${limpiar(m.no)}</td><td>${getTipoLabel(m.tipo)}</td><td>${limpiar(m.personal)}</td><td>${limpiar(m.detalle)}</td></tr>`; });
     html += `</tbody></table>`;
     const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -3206,13 +3270,13 @@ async function iniciarApp() {
     });
 
     historialCompleto = (histRes.data || []).map(mov => ({
-        id: mov.id,
-        fecha: new Date(mov.created_at).toLocaleString('es-ES'),
-        no: mov.n_extintor,
-        tipo: mov.tipo,
-        personal: mov.personal || '-',
-        detalle: mov.detalle || ''
-    }));
+    id: mov.id,
+    fecha: formatearFecha(mov.created_at),
+    no: mov.n_extintor,
+    tipo: mov.tipo,
+    personal: mov.personal || '-',
+    detalle: mov.detalle || ''
+}));
     
     actualizarFiltrosDesdeDB(); 
     poblarResponsables();
