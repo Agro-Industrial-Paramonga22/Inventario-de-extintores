@@ -2183,7 +2183,7 @@ tbody td:first-child strong {
     .history-table td {
         padding: 8px 6px;
     }
-    
+
     .history-table td:nth-child(5) {
         max-width: 150px;
     }

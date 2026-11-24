@@ -547,11 +547,11 @@ function aplicarPermisos() {
         } else {
             // PÚBLICO: solo oculta GARANTÍA (8) y ESTADO (9)
             ths.forEach((th, index) => {
-                if ([8, 9].includes(index + 1)) {
-                    th.style.display = 'none';
-                } else {
-                    th.style.display = 'table-cell';
-                }
+                if (index + 1 === 9) {
+    th.style.display = 'none';
+} else {
+    th.style.display = 'table-cell';
+}
             });
             if (mainTabs) mainTabs.style.display = 'none';
             if (subTabs) subTabs.style.display = 'none';
@@ -1233,7 +1233,7 @@ function renderTable(data) {
     tableBody.innerHTML = "";
     if (data.length === 0) {
         // Público: N°, TIPO, CAP, ÁREA, UBIC ASIG, UBIC ACT, CONDICIÓN = 7 columnas
-        const cols = isAdmin ? 9 : 7;
+        const cols = isAdmin ? 9 : 8;
         tableBody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center; padding:24px; color:#94a3b8;">No hay resultados.</td></tr>`;
         return;
     }
@@ -1260,11 +1260,12 @@ function renderTable(data) {
         html += `<td><span class="badge ${getBadgeClass(condicion)}">${escapeCondicion(condicion)}</span></td>`;
 
         // Columnas solo para admin
-        if (isAdmin) {
-            html += `<td>${garantiaReemplazo}</td>`;
-            const estadoMostrar = estado || "";
-            html += `<td>${estadoMostrar ? `<span class="badge ${getEstadoBadgeClass(estado)}">${estado}</span>` : ""}</td>`;
-        }
+        html += `<td>${garantiaReemplazo}</td>`;
+
+if (isAdmin) {
+    const estadoMostrar = estado || "";
+    html += `<td>${estadoMostrar ? `<span class="badge ${getEstadoBadgeClass(estado)}">${estado}</span>` : ""}</td>`;
+}
 
         row.innerHTML = html;
         row.addEventListener('click', () => {
